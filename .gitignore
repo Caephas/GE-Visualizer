@@ -1,0 +1,4 @@
+venv
+backend/__pycache__
+grape
+frontend/node_modules
