@@ -66,3 +66,49 @@ class MapResponse(BaseModel):
     phenotype: str
     status: Literal["complete", "invalid", "depth-limited"]
     summary: dict
+
+
+class EvolvedIndividual(BaseModel):
+    genome: list[int]
+    phenotype: str
+    fitness: float
+    invalid: bool
+
+
+class GenerationStats(BaseModel):
+    gen: int
+    best_fitness: float
+    mean_fitness: float
+    worst_fitness: float
+    valid_count: int
+    best: EvolvedIndividual
+    top: list[EvolvedIndividual]
+
+
+class EvolutionDone(BaseModel):
+    generations: int
+    best_fitness: float
+    best: EvolvedIndividual
+
+
+class EvolutionConfig(BaseModel):
+    grammar_text: str
+    problem: Literal["string_match", "symbolic_regression"] = "string_match"
+    target: str = ""
+    samples: list[float] = []
+    coeffs: list[float] = []
+    population_size: int = Field(default=100, ge=2)
+    generations: int = Field(default=20, ge=1)
+    p_crossover: float = Field(default=0.8, ge=0.0, le=1.0)
+    p_mutation: float = Field(default=0.1, ge=0.0, le=1.0)
+    elite_size: int = Field(default=1, ge=0)
+    tournament_size: int = Field(default=3, ge=2)
+    codon_size: int = Field(default=400, ge=2)
+    max_depth: int = Field(default=40, ge=1)
+    min_init_genome_length: int = Field(default=5, ge=1)
+    max_init_genome_length: int = Field(default=20, ge=1)
+    max_genome_length: int | None = None
+    consumption: Literal["eager", "lazy"] = "eager"
+    top_k: int = Field(default=20, ge=1)
+    seed: int = 42
+    early_stop: bool = True

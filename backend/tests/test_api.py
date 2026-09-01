@@ -62,3 +62,37 @@ def test_grammar_store_roundtrip() -> None:
     response = client.get("/grammar")
     assert response.status_code == 200
     assert response.json()["grammar_text"] == GRAMMARS["arithmetic"]
+
+
+def test_evolve_streams_generation_events() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/evolve",
+        json={
+            "grammar_text": "<start> ::= <char><char>\n<char> ::= a | b | c",
+            "problem": "string_match",
+            "target": "ab",
+            "population_size": 20,
+            "generations": 3,
+            "seed": 1,
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert 'data: {"type": "generation"' in response.text
+    assert 'data: {"type": "done"' in response.text
+
+
+def test_evolve_reports_grammar_errors_in_stream() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/evolve",
+        json={
+            "grammar_text": "this is not bnf",
+            "problem": "string_match",
+            "population_size": 10,
+            "generations": 1,
+        },
+    )
+    assert response.status_code == 200
+    assert '"type": "error"' in response.text

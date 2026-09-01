@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Controls } from "./components/Controls";
 import { DerivationTree } from "./components/DerivationTree";
+import { EvolutionPanel } from "./components/EvolutionPanel";
 import { GenomeEditor } from "./components/GenomeEditor";
 import { GrammarPanel } from "./components/GrammarPanel";
 import { ParamsPanel } from "./components/ParamsPanel";
@@ -119,6 +120,16 @@ function App() {
         <section className="panel phenotype-panel">
           <PhenotypeView phenotype={phenotype} status={state.result?.status ?? null} />
           <StepDetail step={activeStep} totalSteps={trace.length} />
+        </section>
+        <section className="panel evolution-panel">
+          <h2>Evolution</h2>
+          <EvolutionPanel
+            grammarText={state.grammarText}
+            onDrillDown={(genome) => {
+              dispatch({ type: "SET_GENOME", genome });
+              void map({ genome });
+            }}
+          />
         </section>
       </div>
     </div>

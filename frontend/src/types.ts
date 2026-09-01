@@ -63,3 +63,47 @@ export interface MapResponse {
   status: MapStatus;
   summary: Record<string, number>;
 }
+
+export interface EvolvedIndividual {
+  genome: number[];
+  phenotype: string;
+  fitness: number;
+  invalid: boolean;
+}
+
+export type EvolutionEvent =
+  | {
+      type: "generation";
+      gen: number;
+      best_fitness: number;
+      mean_fitness: number;
+      worst_fitness: number;
+      valid_count: number;
+      best: EvolvedIndividual;
+      top: EvolvedIndividual[];
+    }
+  | { type: "done"; generations: number; best_fitness: number; best: EvolvedIndividual }
+  | { type: "error"; message: string };
+
+export interface EvolutionConfig {
+  grammar_text: string;
+  problem: "string_match" | "symbolic_regression";
+  target: string;
+  samples: number[];
+  coeffs: number[];
+  population_size: number;
+  generations: number;
+  p_crossover: number;
+  p_mutation: number;
+  elite_size: number;
+  tournament_size: number;
+  codon_size: number;
+  max_depth: number;
+  min_init_genome_length: number;
+  max_init_genome_length: number;
+  max_genome_length: number | null;
+  consumption: Consumption;
+  top_k: number;
+  seed: number;
+  early_stop: boolean;
+}
