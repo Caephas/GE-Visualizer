@@ -100,9 +100,20 @@ export function EvolutionPanel({ grammarText, grammarValid, onDrillDown }: Evolu
 
   return (
     <div className="evolution-panel-body">
+      <div className="evo-header">
+        <span className="evo-title">Evolution Playground</span>
+        <button
+          type="button"
+          className="button-primary button-evo"
+          onClick={() => void run()}
+          disabled={running || !grammarValid}
+          title={!grammarValid ? "Fix grammar errors first" : undefined}
+        >
+          {running ? "Running…" : grammarValid ? "Run evolution" : "Fix grammar to run"}
+        </button>
+      </div>
       <div className="evo-controls">
-        <label className="evo-field">
-          Problem
+        <div className="evo-config-row">
           <select
             value={problem}
             onChange={(event) => setProblem(event.target.value as "string_match" | "symbolic_regression")}
@@ -113,43 +124,33 @@ export function EvolutionPanel({ grammarText, grammarValid, onDrillDown }: Evolu
               </option>
             ))}
           </select>
-        </label>
-        {problem === "string_match" && (
-          <label className="evo-field">
-            Target
+          {problem === "string_match" && (
             <input type="text" value={target} onChange={(event) => setTarget(event.target.value)} />
+          )}
+        </div>
+        <div className="evo-config-grid">
+          <label className="evo-field">
+            <span>Pop</span>
+            <input type="number" min={2} value={populationSize} onChange={(event) => setPopulationSize(Number(event.target.value))} />
           </label>
-        )}
-        <label className="evo-field">
-          Pop
-          <input type="number" min={2} value={populationSize} onChange={(event) => setPopulationSize(Number(event.target.value))} />
-        </label>
-        <label className="evo-field">
-          Gens
-          <input type="number" min={1} value={generations} onChange={(event) => setGenerations(Number(event.target.value))} />
-        </label>
-        <label className="evo-field">
-          CX
-          <input type="number" min={0} max={1} step={0.05} value={crossoverRate} onChange={(event) => setCrossoverRate(Number(event.target.value))} />
-        </label>
-        <label className="evo-field">
-          Mut
-          <input type="number" min={0} max={1} step={0.05} value={mutationRate} onChange={(event) => setMutationRate(Number(event.target.value))} />
-        </label>
-        <label className="evo-field">
-          Seed
-          <input type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value))} />
-        </label>
-        <button
-          type="button"
-          onClick={() => void run()}
-          disabled={running || !grammarValid}
-          title={!grammarValid ? "Fix grammar errors first" : undefined}
-        >
-          {running ? "Running…" : grammarValid ? "Run evolution" : "Fix grammar to run"}
-        </button>
+          <label className="evo-field">
+            <span>Gen</span>
+            <input type="number" min={1} value={generations} onChange={(event) => setGenerations(Number(event.target.value))} />
+          </label>
+          <label className="evo-field">
+            <span>Seed</span>
+            <input type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value))} />
+          </label>
+          <label className="evo-field">
+            <span>P(cx)</span>
+            <input type="number" min={0} max={1} step={0.05} value={crossoverRate} onChange={(event) => setCrossoverRate(Number(event.target.value))} />
+          </label>
+          <label className="evo-field">
+            <span>P(mut)</span>
+            <input type="number" min={0} max={1} step={0.05} value={mutationRate} onChange={(event) => setMutationRate(Number(event.target.value))} />
+          </label>
+        </div>
       </div>
-      <p className="evo-description">{selected.description}</p>
       {error && (
         <div className="error-banner" role="alert">
           {error}

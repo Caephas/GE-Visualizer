@@ -11,6 +11,8 @@ export interface DerivationTreeProps {
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
 const FIT_SCALE_CAP = 1.5;
+const NODE_W = 90;
+const NODE_H = 34;
 
 interface View {
   scale: number;
@@ -122,6 +124,7 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
 
   return (
     <div className="tree-stage" ref={stageRef}>
+      <span className="tree-node-count">{nodeCount} nodes</span>
       <svg
         ref={svgRef}
         viewBox={`0 0 ${panel.width} ${panel.height}`}
@@ -143,12 +146,16 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
           {layout.nodes.map(({ node, x, y }) => (
             <g key={node.id} transform={`translate(${x}, ${y})`}>
               <title>{nodeTitle(node)}</title>
-              <circle
-                r={12}
+              <rect
+                x={-NODE_W / 2}
+                y={-NODE_H / 2}
+                width={NODE_W}
+                height={NODE_H}
+                rx={8}
                 className={`tree-node tree-node-${node.kind} ${node.step === currentStep ? "is-active" : ""}`}
               />
-              <text y={4} textAnchor="middle" className="tree-label">
-                {node.label}
+              <text y={4} textAnchor="middle" className={`tree-label ${node.kind === "root" ? "tree-label-root" : ""}`}>
+                {node.label.length > 10 ? `${node.label.slice(0, 9)}…` : node.label}
               </text>
             </g>
           ))}
@@ -169,8 +176,8 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
         >
           −
         </button>
-        <button type="button" onClick={() => setView(fitView())} aria-label="Fit tree">
-          Fit
+        <button type="button" onClick={() => setView(fitView())} aria-label="Fit tree" title="Fit tree">
+          ⊞
         </button>
       </div>
     </div>

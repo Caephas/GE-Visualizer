@@ -83,29 +83,59 @@ export function Controls({
   return (
     <div className="controls">
       <div className="controls-row">
-        <button type="button" onClick={onTogglePlay} disabled={!hasResult}>
-          {playing ? "⏸ Pause" : "▶ Play"}
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onTogglePlay}
+          disabled={!hasResult}
+          aria-label={playing ? "Pause" : "Play"}
+          title={playing ? "Pause" : "Play"}
+        >
+          {playing ? "⏸" : "▶"}
         </button>
         <button
           type="button"
-          className="button-primary"
+          className="icon-button"
+          onClick={onStepBack}
+          disabled={!hasResult || currentStep <= -1}
+          aria-label="Step back"
+          title="Step back"
+        >
+          ◀
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onStepForward}
+          disabled={!hasResult || currentStep >= totalSteps - 1}
+          aria-label="Step forward"
+          title="Step forward"
+        >
+          ▶
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onReset}
+          disabled={!hasResult || currentStep <= -1}
+          aria-label="Reset"
+          title="Reset"
+        >
+          ⟲
+        </button>
+        <button
+          type="button"
+          className="button-secondary"
           onClick={onMap}
           disabled={loading || !canMap}
           title={!canMap ? "Fix grammar errors first" : undefined}
         >
           {loading ? "Mapping…" : "Map genome"}
         </button>
-        <button type="button" onClick={onReset} disabled={!hasResult || currentStep <= -1}>
-          ⏮ Reset
-        </button>
-        <button type="button" onClick={onStepBack} disabled={!hasResult || currentStep <= -1} aria-label="Step back">
-          ◀
-        </button>
-        <button type="button" onClick={onStepForward} disabled={!hasResult || currentStep >= totalSteps - 1} aria-label="Step forward">
-          ▶
-        </button>
         <label className="step-slider">
-          Step {currentStep + 1} / {totalSteps}
+          <span>
+            Step <b>{currentStep + 1}</b>/{totalSteps}
+          </span>
           <input
             type="range"
             min={-1}
@@ -116,15 +146,16 @@ export function Controls({
           />
         </label>
         <label className="speed-slider">
-          {speed} steps/s
+          <span>Speed</span>
           <input
             type="range"
-            min={0.5}
+            min={1}
             max={10}
-            step={0.5}
+            step={1}
             value={speed}
             onChange={(event) => onSpeedChange(Number(event.target.value))}
           />
+          <b>{speed}×</b>
         </label>
         <span className="mode-chip">{consumption} consumption</span>
       </div>

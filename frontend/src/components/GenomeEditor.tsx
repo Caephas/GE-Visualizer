@@ -53,18 +53,29 @@ export function GenomeEditor({
     activeCodonIndex !== null &&
     index >= activeCodonIndex * bitsPerCodon &&
     index < (activeCodonIndex + 1) * bitsPerCodon;
+  const isConsumedCodon = (index: number) =>
+    activeCodonIndex !== null &&
+    (index < activeCodonIndex || (index === activeCodonIndex && activeConsumed !== false));
+  const isUnconsumedCodon = (index: number) => activeCodonIndex !== null && index > activeCodonIndex;
 
   return (
     <div className="genome-editor">
       <div className="genome-strip-toolbar">
-        <label className="binary-toggle">
-          <input type="checkbox" checked={showBinary} onChange={(event) => setShowBinary(event.target.checked)} />
-          Binary view
-        </label>
-        <button type="button" onClick={onGenerate}>
-          Generate genome
-        </button>
+        <span className="genome-label">Genome</span>
         {activeWraps > 0 && <span className="wrap-badge">↻ wrapped ×{activeWraps}</span>}
+        <span className="genome-toolbar-actions">
+          <label className="binary-toggle">
+            <input
+              type="checkbox"
+              checked={showBinary}
+              onChange={(event) => setShowBinary(event.target.checked)}
+            />
+            Binary view
+          </label>
+          <button type="button" onClick={onGenerate}>
+            Generate genome
+          </button>
+        </span>
       </div>
       <div className="codons" role="list" aria-label="Genome codons">
         {showBinary
@@ -85,6 +96,8 @@ export function GenomeEditor({
                 role="listitem"
                 className={`codon ${
                   index === activeCodonIndex ? (activeConsumed === false ? "is-not-consumed" : "is-active") : ""
+                } ${isConsumedCodon(index) ? "is-consumed" : ""} ${
+                  isUnconsumedCodon(index) ? "is-unconsumed" : ""
                 }`}
               >
                 <span className="codon-index">{index}</span>

@@ -76,7 +76,8 @@ export interface TreeLayout {
 /** Tidy tree layout (d3-hierarchy) with SVG-ready coordinates and edge paths. */
 export function layoutTree(root: DerivationNode): TreeLayout {
   const rootNode = hierarchy<DerivationNode>(root, (node) => node.children);
-  tree<DerivationNode>().nodeSize([44, 74])(rootNode);
+  // Spacing sized for the 90×34 rounded-rect nodes the dashboard renders.
+  tree<DerivationNode>().nodeSize([106, 84])(rootNode);
   const descendants = rootNode.descendants();
   const points = descendants.map((node) => ({ node, x: node.x ?? 0, y: node.y ?? 0 }));
   const minX = Math.min(...points.map((point) => point.x));

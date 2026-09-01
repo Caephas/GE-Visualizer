@@ -67,6 +67,14 @@ export function ParamsPanel({ params, genomeLength, onChange, onGenomeLengthChan
           <option value="lazy">lazy</option>
         </select>
       </label>
+      <label className="param-checkbox">
+        <input
+          type="checkbox"
+          checked={params.wrap}
+          onChange={(event) => onChange({ wrap: event.target.checked })}
+        />
+        Wrap genome
+      </label>
       <NumberField
         label="Codon size"
         value={params.codon_size}
@@ -95,14 +103,6 @@ export function ParamsPanel({ params, genomeLength, onChange, onGenomeLengthChan
         onChange={onGenomeLengthChange}
         onInvalid={setError}
       />
-      <label className="param-checkbox">
-        <input
-          type="checkbox"
-          checked={params.wrap}
-          onChange={(event) => onChange({ wrap: event.target.checked })}
-        />
-        Wrap genome
-      </label>
       {error && (
         <p className="param-error" role="alert">
           {error}

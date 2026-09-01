@@ -74,9 +74,16 @@ export function GrammarPanel({
           <span className="grammar-status-error">{grammarError}</span>
         )}
       </div>
-      <button type="button" onClick={() => onApply(grammarText)}>
+      <button
+        type="button"
+        className="button-primary button-apply"
+        onClick={() => onApply(grammarText)}
+        disabled={grammarStatus !== "valid"}
+        title={grammarStatus !== "valid" ? "Fix grammar errors first" : undefined}
+      >
         Apply grammar & map
       </button>
+      <div className="rules-label">Rules</div>
       <div className="grammar-rules" aria-label="Parsed grammar rules">
         {rules.map((rule) => (
           <div key={rule.nonTerminal} className="grammar-rule">

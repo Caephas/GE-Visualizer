@@ -79,19 +79,34 @@ function App() {
 
   useUrlState({ state: persistedState, onRestore: applyRestored });
 
+  const grammarChip =
+    state.grammarStatus === "valid"
+      ? `✓ Valid — ${state.grammarRules ?? 0} rules`
+      : state.grammarStatus === "validating"
+        ? "Checking…"
+        : state.grammarStatus === "invalid"
+          ? "✗ Invalid"
+          : "Not checked";
+  const mappingChip = state.result?.status ?? "no mapping";
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>GE Visualizer</h1>
-        {state.result && (
-          <span className="status-chip" data-status={state.result.status}>
-            {state.result.status}
+        <div className="app-brand">
+          <h1>GE Visualizer</h1>
+          <span className="version">v0.1</span>
+        </div>
+        <div className="header-chips">
+          <span className="header-chip" data-state={state.grammarStatus} title="Grammar status">
+            {grammarChip}
           </span>
-        )}
+          <span className="header-chip" data-state={state.result?.status ?? "none"} title="Mapping status">
+            {mappingChip}
+          </span>
+        </div>
       </header>
       <div className="dashboard">
-        <section className="panel grammar-panel">
-          <h2>Grammar</h2>
+        <aside className="sidebar grammar-panel">
           <GrammarPanel
             grammarText={state.grammarText}
             grammarStatus={state.grammarStatus}
@@ -102,33 +117,32 @@ function App() {
             activeRule={activeRule}
           />
           <GrammarLibrary grammarText={state.grammarText} onLoad={applyGrammar} />
-        </section>
-        <section className="panel controls-panel">
-          <Controls
-            hasResult={state.result !== null}
-            currentStep={currentStep}
-            totalSteps={trace.length}
-            loading={state.loading}
-            error={state.error}
-            canMap={state.grammarStatus === "valid"}
-            playing={playing}
-            speed={speed}
-            consumption={state.params.consumption}
-            onMap={() => void map()}
-            onStepBack={() => dispatch({ type: "STEP_BACK" })}
-            onStepForward={() => dispatch({ type: "STEP_FWD" })}
-            onStepLast={() => {
-              if (trace.length > 0) dispatch({ type: "JUMP_TO_STEP", step: trace.length - 1 });
-            }}
-            onJump={(step) => dispatch({ type: "JUMP_TO_STEP", step })}
-            onReset={() => dispatch({ type: "RESET_PLAYBACK" })}
-            onTogglePlay={togglePlay}
-            onSpeedChange={setSpeed}
-          />
-        </section>
-        <section className="panel genome-panel">
-          <h2>Genome & parameters</h2>
-          <div className="genome-panel-content">
+        </aside>
+        <main className="main">
+          <section className="strip controls-panel">
+            <Controls
+              hasResult={state.result !== null}
+              currentStep={currentStep}
+              totalSteps={trace.length}
+              loading={state.loading}
+              error={state.error}
+              canMap={state.grammarStatus === "valid"}
+              playing={playing}
+              speed={speed}
+              consumption={state.params.consumption}
+              onMap={() => void map()}
+              onStepBack={() => dispatch({ type: "STEP_BACK" })}
+              onStepForward={() => dispatch({ type: "STEP_FWD" })}
+              onStepLast={() => {
+                if (trace.length > 0) dispatch({ type: "JUMP_TO_STEP", step: trace.length - 1 });
+              }}
+              onJump={(step) => dispatch({ type: "JUMP_TO_STEP", step })}
+              onReset={() => dispatch({ type: "RESET_PLAYBACK" })}
+              onTogglePlay={togglePlay}
+              onSpeedChange={setSpeed}
+            />
+          </section>
+          <section className="strip genome-panel">
             <GenomeEditor
               genome={state.result?.genome ?? state.genome}
               bitsPerCodon={state.params.bits_per_codon}
@@ -149,34 +163,32 @@ function App() {
               }}
               onGenomeLengthChange={setGenomeLength}
             />
-          </div>
-        </section>
-        <section className="panel tree-panel">
-          <h2>Derivation tree</h2>
-          {state.result && state.result.status !== "complete" && (
-            <StatusBanner status={state.result.status} params={state.params} />
-          )}
-          {trace.length > 0 ? (
-            <DerivationTree root={treeRoot} currentStep={currentStep} />
-          ) : (
-            <p className="panel-empty">{state.loading ? "Mapping…" : "No trace yet — click “Map genome”."}</p>
-          )}
-        </section>
-        <section className="panel phenotype-panel">
-          <PhenotypeView phenotype={phenotype} status={state.result?.status ?? null} />
-          <StepDetail step={activeStep} totalSteps={trace.length} />
-        </section>
-        <section className="panel evolution-panel">
-          <h2>Evolution</h2>
-          <EvolutionPanel
-            grammarText={state.grammarText}
-            grammarValid={state.grammarStatus === "valid"}
-            onDrillDown={(genome) => {
-              dispatch({ type: "SET_GENOME", genome });
-              void map({ genome });
-            }}
-          />
-        </section>
+          </section>
+          <section className="strip tree-panel">
+            {state.result && state.result.status !== "complete" && (
+              <StatusBanner status={state.result.status} params={state.params} />
+            )}
+            {trace.length > 0 ? (
+              <DerivationTree root={treeRoot} currentStep={currentStep} />
+            ) : (
+              <p className="panel-empty">{state.loading ? "Mapping…" : "No trace yet — click “Map genome”."}</p>
+            )}
+          </section>
+          <section className="strip phenotype-panel">
+            <PhenotypeView phenotype={phenotype} status={state.result?.status ?? null} />
+            <StepDetail step={activeStep} totalSteps={trace.length} />
+          </section>
+          <section className="strip evolution-panel">
+            <EvolutionPanel
+              grammarText={state.grammarText}
+              grammarValid={state.grammarStatus === "valid"}
+              onDrillDown={(genome) => {
+                dispatch({ type: "SET_GENOME", genome });
+                void map({ genome });
+              }}
+            />
+          </section>
+        </main>
       </div>
     </div>
   );

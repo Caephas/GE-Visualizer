@@ -57,7 +57,7 @@ export function GrammarLibrary({ grammarText, onLoad }: GrammarLibraryProps) {
 
   return (
     <div className="grammar-library">
-      <h3>Grammar library</h3>
+      <h3 className="library-heading">Library</h3>
       <div className="library-row">
         <input
           type="text"
