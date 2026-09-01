@@ -176,7 +176,7 @@ function App() {
               <StatusBanner status={state.result.status} params={state.params} />
             )}
             {trace.length > 0 ? (
-              <DerivationTree root={treeRoot} currentStep={currentStep} />
+              <DerivationTree root={treeRoot} currentStep={currentStep} trace={trace} />
             ) : (
               <p className="panel-empty">
                 {state.loading ? "Mapping…" : "No trace yet — click “Apply grammar & map”."}

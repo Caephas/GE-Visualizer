@@ -883,6 +883,34 @@ kbd {
   pointer-events: none;
 }
 
+.tree-tooltip {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  max-width: 260px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 24px rgba(20, 20, 19, 0.14);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.tree-tooltip-label {
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.tree-tooltip-expansion {
+  margin-top: 2px;
+  color: var(--ink-faint);
+  word-break: break-word;
+}
+
 .tree-toolbar {
   position: absolute;
   bottom: 16px;

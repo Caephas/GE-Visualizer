@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { layoutTree } from "../lib/derivation";
-import type { DerivationNode } from "../types";
+import type { DerivationNode, TraceStep } from "../types";
 
 export interface DerivationTreeProps {
   root: DerivationNode;
   currentStep: number;
+  trace?: TraceStep[];
 }
 
 const MIN_SCALE = 0.05;
@@ -13,11 +14,19 @@ const MAX_SCALE = 8;
 const FIT_SCALE_CAP = 1.0;
 const NODE_W = 90;
 const NODE_H = 34;
+const TOOLTIP_W = 260;
+const TOOLTIP_H = 110;
 
 interface View {
   scale: number;
   tx: number;
   ty: number;
+}
+
+interface HoverState {
+  node: DerivationNode;
+  x: number;
+  y: number;
 }
 
 function nodeTitle(node: DerivationNode): string {
@@ -30,17 +39,51 @@ function nodeTitle(node: DerivationNode): string {
   return `${node.label} · step ${node.step} · codon genome[${node.codon_index}] → choice ${node.choice}`;
 }
 
-export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
+function tooltipLines(node: DerivationNode, step: TraceStep | undefined): string[] {
+  if (node.kind === "root") return [node.label, "start rule"];
+
+  const lines = [node.label];
+  if (node.kind === "terminal") {
+    lines.push(node.step === null ? "terminal" : `terminal · created in step ${node.step}`);
+    return lines;
+  }
+
+  if (!step || node.step === null) {
+    lines.push("non-terminal");
+    if (node.codon_index !== null && node.choice !== null) {
+      lines.push(`codon genome[${node.codon_index}] → choice ${node.choice}`);
+    }
+    return lines;
+  }
+
+  lines.push(`step ${node.step}`);
+  if (step.consumed) {
+    lines.push(`genome[${step.codon_index}] = ${step.codon_value}`);
+    lines.push(`${step.codon_value} % ${step.rule_count} → choice ${step.choice}`);
+  } else {
+    lines.push("no codon consumed (single production)");
+  }
+  lines.push(`→ ${step.expansion}`);
+  return lines;
+}
+
+export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [panel, setPanel] = useState({ width: 600, height: 400 });
   const [view, setView] = useState<View>({ scale: 1, tx: 0, ty: 0 });
   const [panning, setPanning] = useState(false);
+  const [hover, setHover] = useState<HoverState | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
   const prevCountRef = useRef(0);
 
   const layout = useMemo(() => layoutTree(root), [root]);
   const nodeCount = layout.nodes.length;
+  const traceByStep = useMemo(() => {
+    const map = new Map<number, TraceStep>();
+    for (const step of trace ?? []) map.set(step.step, step);
+    return map;
+  }, [trace]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -120,7 +163,16 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
     setPanning(false);
   };
 
+  const updateHover = (node: DerivationNode) => (event: React.MouseEvent) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setHover({ node, x: event.clientX - rect.left, y: event.clientY - rect.top });
+  };
+
   const transform = `translate(${view.tx} ${view.ty}) scale(${view.scale})`;
+  const tooltipX = hover ? Math.min(hover.x + 14, Math.max(8, panel.width - TOOLTIP_W - 8)) : 0;
+  const tooltipY = hover ? Math.min(hover.y + 14, Math.max(8, panel.height - TOOLTIP_H - 8)) : 0;
+  const hoverLines = hover ? tooltipLines(hover.node, traceByStep.get(hover.node.step ?? -1)) : [];
 
   return (
     <div className="tree-stage" ref={stageRef}>
@@ -144,8 +196,14 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
             />
           ))}
           {layout.nodes.map(({ node, x, y }) => (
-            <g key={node.id} transform={`translate(${x}, ${y})`}>
-              <title>{nodeTitle(node)}</title>
+            <g
+              key={node.id}
+              className="tree-node-group"
+              transform={`translate(${x}, ${y})`}
+              onMouseEnter={updateHover(node)}
+              onMouseMove={updateHover(node)}
+              onMouseLeave={() => setHover(null)}
+            >
               <rect
                 x={-NODE_W / 2}
                 y={-NODE_H / 2}
@@ -153,6 +211,7 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
                 height={NODE_H}
                 rx={8}
                 className={`tree-node tree-node-${node.kind} ${node.step === currentStep ? "is-active" : ""}`}
+                aria-label={nodeTitle(node)}
               />
               <text y={4} textAnchor="middle" className={`tree-label ${node.kind === "root" ? "tree-label-root" : ""}`}>
                 {node.label.length > 10 ? `${node.label.slice(0, 9)}…` : node.label}
@@ -161,6 +220,16 @@ export function DerivationTree({ root, currentStep }: DerivationTreeProps) {
           ))}
         </g>
       </svg>
+      {hover && (
+        <div className="tree-tooltip" role="tooltip" style={{ left: tooltipX, top: tooltipY }}>
+          <div className="tree-tooltip-label">{hoverLines[0]}</div>
+          {hoverLines.slice(1).map((line) => (
+            <div key={line} className={`tree-tooltip-row ${line.startsWith("→") ? "tree-tooltip-expansion" : ""}`}>
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="tree-toolbar">
         <button
           type="button"

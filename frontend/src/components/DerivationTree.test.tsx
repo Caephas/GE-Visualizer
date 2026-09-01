@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { buildDerivationTree } from "../lib/derivation";
@@ -44,5 +44,17 @@ describe("DerivationTree", () => {
     expect(screen.getByLabelText("Zoom in")).toBeInTheDocument();
     expect(screen.getByLabelText("Zoom out")).toBeInTheDocument();
     expect(screen.getByLabelText("Fit tree")).toBeInTheDocument();
+  });
+
+  it("shows a tooltip with step and codon details on hover", () => {
+    const root = buildDerivationTree(TRACE, TRACE.length);
+    const { container } = render(<DerivationTree root={root} currentStep={1} trace={TRACE} />);
+    const groups = container.querySelectorAll(".tree-node-group");
+    fireEvent.mouseEnter(groups[1], { clientX: 200, clientY: 200 });
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip).toHaveTextContent("step 1");
+    expect(tooltip).toHaveTextContent(/genome\[1\] = 4/);
+    expect(tooltip).toHaveTextContent("4 % 3 → choice 1");
+    expect(tooltip).toHaveTextContent("→ b");
   });
 });
