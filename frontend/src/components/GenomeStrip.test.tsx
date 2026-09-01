@@ -11,6 +11,7 @@ describe("GenomeStrip", () => {
         bitsPerCodon={8}
         activeCodonIndex={1}
         activeConsumed={true}
+        activeWraps={0}
         onGenerate={() => undefined}
       />,
     );
@@ -26,6 +27,7 @@ describe("GenomeStrip", () => {
         bitsPerCodon={4}
         activeCodonIndex={null}
         activeConsumed={null}
+        activeWraps={0}
         onGenerate={() => undefined}
       />,
     );
@@ -42,6 +44,7 @@ describe("GenomeStrip", () => {
         bitsPerCodon={8}
         activeCodonIndex={null}
         activeConsumed={null}
+        activeWraps={0}
         onGenerate={onGenerate}
       />,
     );

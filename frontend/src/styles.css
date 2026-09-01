@@ -145,12 +145,63 @@ select {
 }
 
 .grammar-textarea {
-  flex: 1;
-  min-height: 160px;
+  height: 120px;
+  flex: none;
   resize: none;
   font-family: var(--mono);
   font-size: 0.78rem;
   line-height: 1.5;
+}
+
+.grammar-rules {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-panel);
+}
+
+.grammar-rule {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.grammar-rule:last-child {
+  border-bottom: none;
+}
+
+.rule-nt {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+
+.rule-production {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.rule-production.is-active {
+  background: rgba(79, 140, 255, 0.14);
+  outline: 1px solid var(--accent);
+}
+
+.rule-choice {
+  color: var(--fg-muted);
+  min-width: 1rem;
+  text-align: right;
+}
+
+.rule-text {
+  color: var(--fg);
+  word-break: break-word;
 }
 
 .field-label {
@@ -175,6 +226,28 @@ select {
 
 .step-slider input {
   width: 220px;
+}
+
+.speed-slider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+}
+
+.speed-slider input {
+  width: 120px;
+}
+
+.mode-chip {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--fg-muted);
 }
 
 .error-banner {
@@ -264,6 +337,68 @@ select {
 .bit.is-active {
   border-color: var(--accent);
   color: var(--fg);
+}
+
+.wrap-badge {
+  font-size: 0.75rem;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+@keyframes codonPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 140, 255, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(79, 140, 255, 0);
+  }
+}
+
+.codon.is-active {
+  animation: codonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes treePulse {
+  0%,
+  100% {
+    stroke-width: 3px;
+  }
+  50% {
+    stroke-width: 7px;
+  }
+}
+
+.tree-node.is-active {
+  animation: treePulse 1.2s ease-in-out infinite;
+}
+
+.status-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--warn);
+  border-left: 4px solid var(--warn);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.status-banner-depth-limited {
+  border-color: var(--warn);
+  border-left-color: var(--warn);
+}
+
+.status-banner-invalid {
+  border-color: var(--danger);
+  border-left-color: var(--danger);
+}
+
+.status-banner strong {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .derivation-tree {

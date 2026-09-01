@@ -1,11 +1,13 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Controls } from "./components/Controls";
 import { DerivationTree } from "./components/DerivationTree";
 import { GenomeStrip } from "./components/GenomeStrip";
 import { GrammarPanel } from "./components/GrammarPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
+import { StatusBanner } from "./components/StatusBanner";
 import { StepDetail } from "./components/StepDetail";
+import { usePlayback } from "./hooks/usePlayback";
 import { buildDerivationTree } from "./lib/derivation";
 import { useVisualizer } from "./state";
 
@@ -20,6 +22,19 @@ function App() {
   );
   const phenotype =
     activeStep?.partial_phenotype ?? (trace.length > 0 ? trace[0].non_terminal : "");
+  const canStepForward = state.result !== null && currentStep < trace.length - 1;
+  const { playing, speed, togglePlay, stop, setSpeed } = usePlayback({
+    onStep: () => dispatch({ type: "STEP_FWD" }),
+    canStep: canStepForward,
+  });
+
+  useEffect(() => {
+    stop();
+  }, [state.result, stop]);
+
+  const activeRule = activeStep
+    ? { nonTerminal: activeStep.non_terminal, choice: activeStep.choice }
+    : null;
 
   return (
     <div className="app">
@@ -38,6 +53,7 @@ function App() {
             grammarText={state.grammarText}
             onChange={(grammarText) => dispatch({ type: "SET_GRAMMAR_TEXT", grammarText })}
             onApply={applyGrammar}
+            activeRule={activeRule}
           />
         </section>
         <section className="panel controls-panel">
@@ -47,11 +63,19 @@ function App() {
             totalSteps={trace.length}
             loading={state.loading}
             error={state.error}
+            playing={playing}
+            speed={speed}
+            consumption={state.params.consumption}
             onMap={() => void map()}
             onStepBack={() => dispatch({ type: "STEP_BACK" })}
             onStepForward={() => dispatch({ type: "STEP_FWD" })}
+            onStepLast={() => {
+              if (trace.length > 0) dispatch({ type: "JUMP_TO_STEP", step: trace.length - 1 });
+            }}
             onJump={(step) => dispatch({ type: "JUMP_TO_STEP", step })}
             onReset={() => dispatch({ type: "RESET_PLAYBACK" })}
+            onTogglePlay={togglePlay}
+            onSpeedChange={setSpeed}
           />
         </section>
         <section className="panel genome-panel">
@@ -61,11 +85,15 @@ function App() {
             bitsPerCodon={state.params.bits_per_codon}
             activeCodonIndex={activeStep?.codon_index ?? null}
             activeConsumed={activeStep?.consumed ?? null}
+            activeWraps={activeStep?.wraps ?? 0}
             onGenerate={generateGenome}
           />
         </section>
         <section className="panel tree-panel">
           <h2>Derivation tree</h2>
+          {state.result && state.result.status !== "complete" && (
+            <StatusBanner status={state.result.status} params={state.params} />
+          )}
           {trace.length > 0 ? (
             <DerivationTree root={treeRoot} currentStep={currentStep} />
           ) : (

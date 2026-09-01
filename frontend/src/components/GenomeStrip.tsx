@@ -7,6 +7,7 @@ export interface GenomeStripProps {
   bitsPerCodon: number;
   activeCodonIndex: number | null;
   activeConsumed: boolean | null;
+  activeWraps: number;
   onGenerate: () => void;
 }
 
@@ -15,6 +16,7 @@ export function GenomeStrip({
   bitsPerCodon,
   activeCodonIndex,
   activeConsumed,
+  activeWraps,
   onGenerate,
 }: GenomeStripProps) {
   const [showBinary, setShowBinary] = useState(false);
@@ -30,6 +32,7 @@ export function GenomeStrip({
         <button type="button" onClick={onGenerate}>
           Generate genome
         </button>
+        {activeWraps > 0 && <span className="wrap-badge">↻ wrapped ×{activeWraps}</span>}
       </div>
       <div className="codons" role="list" aria-label="Genome codons">
         {showBinary
