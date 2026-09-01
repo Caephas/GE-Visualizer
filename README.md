@@ -56,7 +56,7 @@ flowchart LR
   Routes --> Evo
   Mapper --> Grape
   Evo --> Grape
-  Schemas -. frozen contract mirrored by frontend/src/types.ts .-> UI
+  Schemas -. "frozen contract mirrored by frontend/src/types.ts" .-> UI
   Local -. state .-> UI
 ```
 
