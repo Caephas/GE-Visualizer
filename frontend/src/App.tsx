@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Controls } from "./components/Controls";
 import { DerivationTree } from "./components/DerivationTree";
@@ -21,6 +21,8 @@ function App() {
   const { state, dispatch, map, mapSoon, applyGrammar, generateGenome } = useVisualizer();
   const [genomeLength, setGenomeLength] = useState(10);
   const [helpOpen, setHelpOpen] = useState(false);
+  const pendingStepRef = useRef<number | null>(null);
+  const pendingTimerRef = useRef<number | null>(null);
   const trace = useMemo(() => state.result?.trace ?? [], [state.result]);
   const currentStep = Math.max(-1, Math.min(state.currentStep, trace.length - 1));
   const activeStep = currentStep >= 0 ? trace[currentStep] : null;
@@ -67,17 +69,42 @@ function App() {
         dispatch({ type: "SET_PARAMS", params: { ...DEFAULT_PARAMS, ...restored.params } });
       }
       if (restored.genomeLength !== undefined) setGenomeLength(restored.genomeLength);
-      const step = restored.currentStep;
+      pendingStepRef.current = restored.currentStep ?? null;
       void map({
         grammarText: restored.grammarText,
         genome: restored.genome,
         params: restored.params ? { ...DEFAULT_PARAMS, ...restored.params } : undefined,
-      }).then(() => {
-        if (step !== undefined) dispatch({ type: "JUMP_TO_STEP", step });
       });
     },
     [dispatch, map],
   );
+
+  // A restored step is re-applied whenever a fresh mapping lands. Restore and
+  // the mount auto-map can race, and the last MAP_SUCCESS resets the step to
+  // -1, so keep the pending step until no new mapping arrives for a moment.
+  useEffect(() => {
+    const pending = pendingStepRef.current;
+    if (pending === null || !state.result) return;
+    if (state.result.trace.length === 0) {
+      pendingStepRef.current = null;
+      return;
+    }
+    const target = Math.min(pending, state.result.trace.length - 1);
+    if (state.currentStep !== target) {
+      dispatch({ type: "JUMP_TO_STEP", step: target });
+    }
+  }, [state.result, state.currentStep, dispatch]);
+
+  useEffect(() => {
+    if (pendingStepRef.current === null) return;
+    if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    pendingTimerRef.current = window.setTimeout(() => {
+      pendingStepRef.current = null;
+    }, 1200);
+    return () => {
+      if (pendingTimerRef.current) window.clearTimeout(pendingTimerRef.current);
+    };
+  }, [state.result, state.currentStep]);
 
   useUrlState({ state: persistedState, onRestore: applyRestored });
 
