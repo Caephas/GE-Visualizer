@@ -67,14 +67,13 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 340px 1fr;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-columns: 340px 1fr 1fr;
+  grid-template-rows: auto auto 1fr auto;
   grid-template-areas:
-    "grammar controls"
-    "grammar genome"
-    "grammar tree"
-    "grammar phenotype"
-    "grammar evolution";
+    "grammar controls controls"
+    "grammar genome genome"
+    "grammar tree tree"
+    "grammar phenotype evolution";
   gap: 12px;
   padding: 12px;
   overflow: hidden;
@@ -120,12 +119,14 @@ body {
 .phenotype-panel {
   grid-area: phenotype;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
+  max-height: 340px;
 }
 
 .evolution-panel {
   grid-area: evolution;
+  max-height: 340px;
 }
 
 .panel-empty {
@@ -617,10 +618,41 @@ kbd {
   animation: codonPulse 1.2s ease-in-out infinite;
 }
 
-.derivation-tree {
+.tree-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.tree-stage svg {
   width: 100%;
   height: 100%;
-  min-height: 260px;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.tree-stage svg.panning {
+  cursor: grabbing;
+}
+
+.tree-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 0.3rem;
+  z-index: 2;
+}
+
+.tree-toolbar button {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
   background: var(--surface);
 }
 
@@ -633,6 +665,20 @@ kbd {
 .tree-node {
   stroke: var(--line);
   stroke-width: 2px;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: popIn 180ms ease-out;
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .tree-node-root {
@@ -665,7 +711,7 @@ kbd {
 
 .tree-label {
   fill: var(--ink);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-mono);
   paint-order: stroke;
   stroke: var(--surface);
@@ -829,7 +875,7 @@ kbd {
 
 .evo-results {
   display: grid;
-  grid-template-columns: 420px 1fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
   align-items: start;
   flex: 1;
