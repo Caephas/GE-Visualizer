@@ -1,0 +1,572 @@
+{
+  "GEParams": {
+    "properties": {
+      "codon_size": {
+        "default": 400,
+        "title": "Codon Size",
+        "type": "integer"
+      },
+      "bits_per_codon": {
+        "default": 8,
+        "title": "Bits Per Codon",
+        "type": "integer"
+      },
+      "consumption": {
+        "enum": [
+          "eager",
+          "lazy"
+        ],
+        "title": "Consumption",
+        "type": "string"
+      },
+      "max_depth": {
+        "default": 40,
+        "title": "Max Depth",
+        "type": "integer"
+      },
+      "genome_representation": {
+        "enum": [
+          "binary",
+          "codons"
+        ],
+        "title": "Genome Representation",
+        "type": "string"
+      },
+      "wrap": {
+        "default": false,
+        "title": "Wrap",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "consumption",
+      "genome_representation"
+    ],
+    "title": "GEParams",
+    "type": "object"
+  },
+  "MapRequest": {
+    "$defs": {
+      "GEParams": {
+        "properties": {
+          "codon_size": {
+            "default": 400,
+            "title": "Codon Size",
+            "type": "integer"
+          },
+          "bits_per_codon": {
+            "default": 8,
+            "title": "Bits Per Codon",
+            "type": "integer"
+          },
+          "consumption": {
+            "enum": [
+              "eager",
+              "lazy"
+            ],
+            "title": "Consumption",
+            "type": "string"
+          },
+          "max_depth": {
+            "default": 40,
+            "title": "Max Depth",
+            "type": "integer"
+          },
+          "genome_representation": {
+            "enum": [
+              "binary",
+              "codons"
+            ],
+            "title": "Genome Representation",
+            "type": "string"
+          },
+          "wrap": {
+            "default": false,
+            "title": "Wrap",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consumption",
+          "genome_representation"
+        ],
+        "title": "GEParams",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "grammar_text": {
+        "title": "Grammar Text",
+        "type": "string"
+      },
+      "genome": {
+        "items": {
+          "type": "integer"
+        },
+        "title": "Genome",
+        "type": "array"
+      },
+      "params": {
+        "$ref": "#/$defs/GEParams"
+      }
+    },
+    "required": [
+      "grammar_text",
+      "genome",
+      "params"
+    ],
+    "title": "MapRequest",
+    "type": "object"
+  },
+  "TraceStep": {
+    "properties": {
+      "step": {
+        "title": "Step",
+        "type": "integer"
+      },
+      "non_terminal": {
+        "title": "Non Terminal",
+        "type": "string"
+      },
+      "codon_index": {
+        "title": "Codon Index",
+        "type": "integer"
+      },
+      "codon_value": {
+        "title": "Codon Value",
+        "type": "integer"
+      },
+      "rule_count": {
+        "title": "Rule Count",
+        "type": "integer"
+      },
+      "choice": {
+        "title": "Choice",
+        "type": "integer"
+      },
+      "expansion": {
+        "title": "Expansion",
+        "type": "string"
+      },
+      "partial_phenotype": {
+        "title": "Partial Phenotype",
+        "type": "string"
+      },
+      "depth": {
+        "title": "Depth",
+        "type": "integer"
+      },
+      "wraps": {
+        "title": "Wraps",
+        "type": "integer"
+      },
+      "consumed": {
+        "title": "Consumed",
+        "type": "boolean"
+      },
+      "complete": {
+        "title": "Complete",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "step",
+      "non_terminal",
+      "codon_index",
+      "codon_value",
+      "rule_count",
+      "choice",
+      "expansion",
+      "partial_phenotype",
+      "depth",
+      "wraps",
+      "consumed",
+      "complete"
+    ],
+    "title": "TraceStep",
+    "type": "object"
+  },
+  "DerivationNode": {
+    "$defs": {
+      "DerivationNode": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "root",
+              "nonterminal",
+              "terminal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Step"
+          },
+          "codon_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Codon Index"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Choice"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/$defs/DerivationNode"
+            },
+            "title": "Children",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind"
+        ],
+        "title": "DerivationNode",
+        "type": "object"
+      }
+    },
+    "$ref": "#/$defs/DerivationNode"
+  },
+  "MapResponse": {
+    "$defs": {
+      "GEParams": {
+        "properties": {
+          "codon_size": {
+            "default": 400,
+            "title": "Codon Size",
+            "type": "integer"
+          },
+          "bits_per_codon": {
+            "default": 8,
+            "title": "Bits Per Codon",
+            "type": "integer"
+          },
+          "consumption": {
+            "enum": [
+              "eager",
+              "lazy"
+            ],
+            "title": "Consumption",
+            "type": "string"
+          },
+          "max_depth": {
+            "default": 40,
+            "title": "Max Depth",
+            "type": "integer"
+          },
+          "genome_representation": {
+            "enum": [
+              "binary",
+              "codons"
+            ],
+            "title": "Genome Representation",
+            "type": "string"
+          },
+          "wrap": {
+            "default": false,
+            "title": "Wrap",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consumption",
+          "genome_representation"
+        ],
+        "title": "GEParams",
+        "type": "object"
+      },
+      "TraceStep": {
+        "properties": {
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          },
+          "non_terminal": {
+            "title": "Non Terminal",
+            "type": "string"
+          },
+          "codon_index": {
+            "title": "Codon Index",
+            "type": "integer"
+          },
+          "codon_value": {
+            "title": "Codon Value",
+            "type": "integer"
+          },
+          "rule_count": {
+            "title": "Rule Count",
+            "type": "integer"
+          },
+          "choice": {
+            "title": "Choice",
+            "type": "integer"
+          },
+          "expansion": {
+            "title": "Expansion",
+            "type": "string"
+          },
+          "partial_phenotype": {
+            "title": "Partial Phenotype",
+            "type": "string"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "wraps": {
+            "title": "Wraps",
+            "type": "integer"
+          },
+          "consumed": {
+            "title": "Consumed",
+            "type": "boolean"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "step",
+          "non_terminal",
+          "codon_index",
+          "codon_value",
+          "rule_count",
+          "choice",
+          "expansion",
+          "partial_phenotype",
+          "depth",
+          "wraps",
+          "consumed",
+          "complete"
+        ],
+        "title": "TraceStep",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "genome": {
+        "items": {
+          "type": "integer"
+        },
+        "title": "Genome",
+        "type": "array"
+      },
+      "params": {
+        "$ref": "#/$defs/GEParams"
+      },
+      "trace": {
+        "items": {
+          "$ref": "#/$defs/TraceStep"
+        },
+        "title": "Trace",
+        "type": "array"
+      },
+      "phenotype": {
+        "title": "Phenotype",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "complete",
+          "invalid",
+          "depth-limited"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "summary": {
+        "additionalProperties": true,
+        "title": "Summary",
+        "type": "object"
+      }
+    },
+    "required": [
+      "genome",
+      "params",
+      "trace",
+      "phenotype",
+      "status",
+      "summary"
+    ],
+    "title": "MapResponse",
+    "type": "object"
+  },
+  "EvolutionConfig": {
+    "properties": {
+      "grammar_text": {
+        "title": "Grammar Text",
+        "type": "string"
+      },
+      "problem": {
+        "default": "string_match",
+        "enum": [
+          "string_match",
+          "symbolic_regression"
+        ],
+        "title": "Problem",
+        "type": "string"
+      },
+      "target": {
+        "default": "",
+        "title": "Target",
+        "type": "string"
+      },
+      "samples": {
+        "default": [],
+        "items": {
+          "type": "number"
+        },
+        "title": "Samples",
+        "type": "array"
+      },
+      "coeffs": {
+        "default": [],
+        "items": {
+          "type": "number"
+        },
+        "title": "Coeffs",
+        "type": "array"
+      },
+      "population_size": {
+        "default": 100,
+        "minimum": 2,
+        "title": "Population Size",
+        "type": "integer"
+      },
+      "generations": {
+        "default": 20,
+        "minimum": 1,
+        "title": "Generations",
+        "type": "integer"
+      },
+      "p_crossover": {
+        "default": 0.8,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "P Crossover",
+        "type": "number"
+      },
+      "p_mutation": {
+        "default": 0.1,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "P Mutation",
+        "type": "number"
+      },
+      "elite_size": {
+        "default": 1,
+        "minimum": 0,
+        "title": "Elite Size",
+        "type": "integer"
+      },
+      "tournament_size": {
+        "default": 3,
+        "minimum": 2,
+        "title": "Tournament Size",
+        "type": "integer"
+      },
+      "codon_size": {
+        "default": 400,
+        "minimum": 2,
+        "title": "Codon Size",
+        "type": "integer"
+      },
+      "max_depth": {
+        "default": 40,
+        "minimum": 1,
+        "title": "Max Depth",
+        "type": "integer"
+      },
+      "min_init_genome_length": {
+        "default": 5,
+        "minimum": 1,
+        "title": "Min Init Genome Length",
+        "type": "integer"
+      },
+      "max_init_genome_length": {
+        "default": 20,
+        "minimum": 1,
+        "title": "Max Init Genome Length",
+        "type": "integer"
+      },
+      "max_genome_length": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Max Genome Length"
+      },
+      "consumption": {
+        "default": "eager",
+        "enum": [
+          "eager",
+          "lazy"
+        ],
+        "title": "Consumption",
+        "type": "string"
+      },
+      "top_k": {
+        "default": 20,
+        "minimum": 1,
+        "title": "Top K",
+        "type": "integer"
+      },
+      "seed": {
+        "default": 42,
+        "title": "Seed",
+        "type": "integer"
+      },
+      "early_stop": {
+        "default": true,
+        "title": "Early Stop",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "grammar_text"
+    ],
+    "title": "EvolutionConfig",
+    "type": "object"
+  }
+}

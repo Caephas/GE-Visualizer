@@ -60,8 +60,26 @@ cd frontend && npm test && npm run typecheck && npm run lint && npm run build
   the trace API; `engine/evolution.py` runs the GRAPE/DEAP playground
 - `frontend/` — React + TypeScript dashboard: `lib/` holds pure view logic (derivation tree,
   BNF display parsing, encoding, serialization), `components/` the panels
-- `docs/ge-visualizer/development-plan.md` — the phased plan (Phases 0–6 complete)
+- `docs/ge-visualizer/development-plan.md` — the phased plan (Phases 0–7 complete)
+- `docs/ge-visualizer/qa-checklist.md` — acceptance-criteria evidence and manual checklist
 - `tools/reference_mapper.py` — regenerates golden fixtures from unpatched `grape-bds`
+- `tools/export_schemas.py` — regenerates the schema-mirror fixture for the frontend
+- `tools/e2e_smoke.py` — end-to-end smoke test against a running stack
+
+## End-to-end smoke test
+
+With both processes running:
+
+```bash
+python tools/e2e_smoke.py                                    # direct to the backend
+python tools/e2e_smoke.py --base http://localhost:5173/api   # through the Vite proxy
+```
+
+## Deployment
+
+The frontend is a static build (`cd frontend && npm run build`, serve `dist/`) and the backend
+is a single FastAPI process. Point the static server at the backend (same origin or CORS).
+Docker is intentionally not included — two local processes are all this project needs.
 
 ## License note
 
