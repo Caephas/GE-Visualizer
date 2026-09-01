@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Controls } from "./components/Controls";
 import { DerivationTree } from "./components/DerivationTree";
 import { EvolutionPanel } from "./components/EvolutionPanel";
 import { GenomeEditor } from "./components/GenomeEditor";
 import { GrammarPanel } from "./components/GrammarPanel";
+import { GrammarLibrary } from "./components/GrammarLibrary";
 import { ParamsPanel } from "./components/ParamsPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
 import { StatusBanner } from "./components/StatusBanner";
 import { StepDetail } from "./components/StepDetail";
+import { useUrlState } from "./hooks/useUrlState";
 import { usePlayback } from "./hooks/usePlayback";
 import { buildDerivationTree } from "./lib/derivation";
-import { useVisualizer } from "./state";
+import type { PersistedState } from "./lib/serialization";
+import { DEFAULT_PARAMS, useVisualizer } from "./state";
 
 function App() {
   const { state, dispatch, map, mapSoon, applyGrammar, generateGenome } = useVisualizer();
@@ -39,6 +42,43 @@ function App() {
     ? { nonTerminal: activeStep.non_terminal, choice: activeStep.choice }
     : null;
 
+  const persistedState = useMemo<PersistedState>(
+    () => ({
+      grammarText: state.grammarText,
+      genome: state.genome,
+      params: state.params,
+      currentStep,
+      genomeLength,
+    }),
+    [state.grammarText, state.genome, state.params, currentStep, genomeLength],
+  );
+
+  const applyRestored = useCallback(
+    (restored: Partial<PersistedState>) => {
+      if (restored.grammarText !== undefined) {
+        dispatch({ type: "SET_GRAMMAR_TEXT", grammarText: restored.grammarText });
+      }
+      if (restored.genome !== undefined) {
+        dispatch({ type: "SET_GENOME", genome: restored.genome });
+      }
+      if (restored.params !== undefined) {
+        dispatch({ type: "SET_PARAMS", params: { ...DEFAULT_PARAMS, ...restored.params } });
+      }
+      if (restored.genomeLength !== undefined) setGenomeLength(restored.genomeLength);
+      const step = restored.currentStep;
+      void map({
+        grammarText: restored.grammarText,
+        genome: restored.genome,
+        params: restored.params ? { ...DEFAULT_PARAMS, ...restored.params } : undefined,
+      }).then(() => {
+        if (step !== undefined) dispatch({ type: "JUMP_TO_STEP", step });
+      });
+    },
+    [dispatch, map],
+  );
+
+  useUrlState({ state: persistedState, onRestore: applyRestored });
+
   return (
     <div className="app">
       <header className="app-header">
@@ -58,6 +98,7 @@ function App() {
             onApply={applyGrammar}
             activeRule={activeRule}
           />
+          <GrammarLibrary grammarText={state.grammarText} onLoad={applyGrammar} />
         </section>
         <section className="panel controls-panel">
           <Controls
