@@ -1,11 +1,8 @@
 from fastapi import FastAPI
-from backend.api.routes import router
 
-app = FastAPI(title="GE Visualization Tool")
+app = FastAPI(title="GE Visualizer API")
 
-# Include API Routes
-app.include_router(router)
 
 @app.get("/health-check")
-def read_root():
+def health_check() -> dict:
     return {"message": "GE Visualization API is running!"}
