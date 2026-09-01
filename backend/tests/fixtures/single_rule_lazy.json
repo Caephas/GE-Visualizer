@@ -1,0 +1,22 @@
+{
+  "case_id": "single_rule_lazy",
+  "grammar": "<start> ::= <s>\n<s> ::= <a> <b>\n<a> ::= x\n<b> ::= y | z",
+  "genome": [
+    1,
+    2,
+    3
+  ],
+  "consumption": "lazy",
+  "max_depth": 20,
+  "expected": {
+    "phenotype": "x z",
+    "used_codons": 1,
+    "nodes": 2,
+    "depth": 4,
+    "invalid": false,
+    "n_wraps": 0,
+    "structure": [
+      1
+    ]
+  }
+}

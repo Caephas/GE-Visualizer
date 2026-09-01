@@ -21,6 +21,10 @@ class GEParams(BaseModel):
     wrap: bool = False
 
 
+class GrammarUpload(BaseModel):
+    grammar_text: str
+
+
 class MapRequest(BaseModel):
     grammar_text: str
     genome: list[int]

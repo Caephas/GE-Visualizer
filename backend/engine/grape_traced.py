@@ -11,7 +11,7 @@ from operator import attrgetter
 import numpy as np
 import random
 import copy
- 
+
 class Individual(object):
     """
     A GE individual.
@@ -20,16 +20,16 @@ class Individual(object):
     def __init__(self, genome, grammar, max_depth, codon_consumption):
         """
         """
-        
+
         self.genome = genome
         if codon_consumption == 'lazy':
             self.phenotype, self.nodes, self.depth, \
             self.used_codons, self.invalid, self.n_wraps, \
-            self.structure = mapper_lazy(genome, grammar, max_depth)
+            self.structure, _, _ = mapper_lazy(genome, grammar, max_depth)
         elif codon_consumption == 'eager':
             self.phenotype, self.nodes, self.depth, \
             self.used_codons, self.invalid, self.n_wraps, \
-            self.structure = mapper_eager(genome, grammar, max_depth)
+            self.structure, _, _ = mapper_eager(genome, grammar, max_depth)
         else:
             raise ValueError("Unknown mapper")
 
@@ -46,7 +46,7 @@ class Grammar(object):
         - True, if it is recursive, and False, otherwise
         - the minimum depth to terminate the mapping of all NTs of this PR
     - n_rules: df
-    
+
     """
     def __init__(self, file_address):
         #Reading the file
@@ -64,7 +64,7 @@ class Grammar(object):
         del rules[0]
         rules = [item.replace('\n',"") for item in rules]
         rules = [item.replace('\t',"") for item in rules]
-        
+
         #list of lists (set of production rules for each non-terminal)
         self.production_rules = [i.split('|') for i in rules]
         for i in range(len(self.production_rules)):
@@ -73,7 +73,7 @@ class Grammar(object):
             for j in range(len(self.production_rules[i])):
                 #Include in the list the PR itself, NT or T, arity and the production choice label
                 #if re.findall(r"\<(\w+)\>",self.production_rules[i][j]):
-                if re.findall(r"\<([\(\)\w,-.]+)\>",self.production_rules[i][j]):                    
+                if re.findall(r"\<([\(\)\w,-.]+)\>",self.production_rules[i][j]):
                     #arity = len(re.findall(r"\<(\w+)\>",self.production_rules[i][j]))
                     arity = len(re.findall(r"\<([\(\)\w,-.]+)\>",self.production_rules[i][j]))
                     self.production_rules[i][j] = [self.production_rules[i][j] , "non-terminal", arity, j]
@@ -81,15 +81,15 @@ class Grammar(object):
                     self.production_rules[i][j] = [self.production_rules[i][j] , "terminal", 0, j] #arity 0
         #number of production rules for each non-terminal
         self.n_rules = [len(list_) for list_ in self.production_rules]
-  
+
         for i in range(len(self.production_rules)):
             for j in range(len(self.production_rules[i])):
                 NTs_to_check_recursiveness = re.findall(r"\<([\(\)\w,-.]+)\>", self.production_rules[i][j][0])
                 NTs_to_check_recursiveness = ['<' + item_ + '>' for item_ in NTs_to_check_recursiveness]
-                unique_NTs = np.unique(NTs_to_check_recursiveness, return_counts=False) 
+                unique_NTs = np.unique(NTs_to_check_recursiveness, return_counts=False)
                 recursive = False
                 for NT_to_check in unique_NTs:
-                    stack = [self.non_terminals[i]]  
+                    stack = [self.non_terminals[i]]
                     if NT_to_check in stack:
                         recursive = True
                         break
@@ -100,7 +100,7 @@ class Grammar(object):
                             break
                         stack.pop()
                 self.production_rules[i][j].append(recursive)
-      
+
         #minimum depth from each non-terminal to terminate the mapping of all symbols
         NT_depth_to_terminate = [None]*len(self.non_terminals)
         #minimum depth from each production rule to terminate the mapping of all symbols
@@ -129,7 +129,7 @@ class Grammar(object):
             #after filling up NT_depth_to_terminate, we need to run the loop one more time to
             #fill up part_PR_depth_to_terminate, so we check in the beginning
             if None not in NT_depth_to_terminate:
-                continue_ = False 
+                continue_ = False
             for i in range(len(self.non_terminals)):
                 for j in range(len(self.production_rules)):
                     for k in range(len(self.production_rules[j])):
@@ -153,13 +153,13 @@ class Grammar(object):
                     depth_ = max(part_PR_depth_to_terminate[i][j])
                     PR_depth_to_terminate.append(depth_)
                     self.production_rules[i][j].append(depth_)
-        
+
 def check_recursiveness(self, NT, stack):
     idx_NT = self.non_terminals.index(NT)
     for j in range(len(self.production_rules[idx_NT])):
         NTs_to_check_recursiveness = re.findall(r"\<([\(\)\w,-.]+)\>", self.production_rules[idx_NT][j][0])
         NTs_to_check_recursiveness = ['<' + item_ + '>' for item_ in NTs_to_check_recursiveness]
-        unique_NTs = np.unique(NTs_to_check_recursiveness, return_counts=False) 
+        unique_NTs = np.unique(NTs_to_check_recursiveness, return_counts=False)
         recursive = False
   #      while unique_NTs.size and not recursive:
         for NT_to_check in unique_NTs:
@@ -176,27 +176,27 @@ def check_recursiveness(self, NT, stack):
 
 def selLexicaseFilterCount(individuals, k):
     """
-   
+
 
     """
     selected_individuals = []
     #valid_individuals = individuals#.copy()#[i for i in individuals if not i.invalid]
     l_samples = np.shape(individuals[0].fitness_each_sample)[0]
-    
+
     inds_fitness_zero = [ind for ind in individuals if ind.fitness.values[0] == 0]
     if len(inds_fitness_zero) > 0:
         for i in range(k):
             selected_individuals.append(random.choice(inds_fitness_zero))
         return selected_individuals
-    
+
     cases = list(range(0,l_samples))
     candidates = individuals
-    
+
     error_vectors = [ind.fitness_each_sample for ind in candidates]
 
     unique_error_vectors = list(set([tuple(i) for i in error_vectors]))
     unique_error_vectors = [list(i) for i in unique_error_vectors]
-    
+
     candidates_prefiltered_set = []
     for i in range(len(unique_error_vectors)):
         cands = [ind for ind in candidates if ind.fitness_each_sample == unique_error_vectors[i]]
@@ -206,7 +206,7 @@ def selLexicaseFilterCount(individuals, k):
         #fill the pool only with candidates with unique error vectors
         pool = []
         for list_ in candidates_prefiltered_set:
-            pool.append(random.choice(list_)) 
+            pool.append(random.choice(list_))
         random.shuffle(cases)
         count_ = 0
         while len(cases) > 0 and len(pool) > 1:
@@ -214,16 +214,16 @@ def selLexicaseFilterCount(individuals, k):
             f = max
             best_val_for_case = f(map(lambda x: x.fitness_each_sample[cases[0]], pool))
             pool = [ind for ind in pool if ind.fitness_each_sample[cases[0]] == best_val_for_case]
-            del cases[0]                    
+            del cases[0]
 
         pool[0].n_cases = count_
         selected_individuals.append(pool[0]) #Select the remaining candidate
         cases = list(range(0,l_samples)) #Recreate the list of cases
 
     return selected_individuals
-        
+
 def mapper(genome, grammar, max_depth):
-    
+
     idx_genome = 0
     phenotype = grammar.start_rule
     next_NT = re.search(r"\<(\w+)\>",phenotype).group()
@@ -232,7 +232,7 @@ def mapper(genome, grammar, max_depth):
     idx_depth = 0
     nodes = 0
     structure = []
-    
+
     while next_NT and idx_genome < len(genome):
         NT_index = grammar.non_terminals.index(next_NT)
         index_production_chosen = genome[idx_genome] % grammar.n_rules[NT_index]
@@ -245,7 +245,7 @@ def mapper(genome, grammar, max_depth):
             idx_depth += 1
             nodes += 1
         elif grammar.production_rules[NT_index][index_production_chosen][2] == 1: #arity 1 (PR with one NT)
-            pass        
+            pass
         else: #it is a PR with more than one NT
             arity = grammar.production_rules[NT_index][index_production_chosen][2]
             if idx_depth == 0:
@@ -259,23 +259,26 @@ def mapper(genome, grammar, max_depth):
         else:
             next_NT = None
         idx_genome += 1
-        
+
     if next_NT:
         invalid = True
         used_codons = 0
     else:
         invalid = False
         used_codons = idx_genome
-    
+
     depth = max(list_depth)
-   
+
     return phenotype, nodes, depth, used_codons, invalid, 0, structure
 
-def mapper_eager(genome, grammar, max_depth):
+def mapper_eager(genome, grammar, max_depth, wrap=False):
     """
     Identical to the previous one.
     Solve the names later.
-    """    
+
+    [GEV] Instrumented: records a per-step trace and supports optional genome
+    wrapping. Modified by GE Visualizer; see THIRD_PARTY_NOTICES.md.
+    """
 
     idx_genome = 0
     phenotype = grammar.start_rule
@@ -285,20 +288,43 @@ def mapper_eager(genome, grammar, max_depth):
     idx_depth = 0
     nodes = 0
     structure = []
-    
-    while next_NT and idx_genome < len(genome):
+    steps = []              # GEV: per-step trace
+    wraps = 0               # GEV: wrap counter
+    depth_limited = False   # GEV: distinguish depth-limit from plain invalid
+
+    while next_NT and len(genome) > 0 and (idx_genome < len(genome) or wrap):
+        if wrap and idx_genome >= len(genome):   # GEV: wrap extension
+            idx_genome = 0
+            wraps += 1
+        codon_index = idx_genome                 # GEV
         NT_index = grammar.non_terminals.index(next_NT)
         index_production_chosen = genome[idx_genome] % grammar.n_rules[NT_index]
         structure.append(index_production_chosen)
         phenotype = phenotype.replace(next_NT, grammar.production_rules[NT_index][index_production_chosen][0], 1)
         list_depth[idx_depth] += 1
-        if list_depth[idx_depth] > max_depth:
+        current_depth = list_depth[idx_depth]
+        steps.append({
+            "step": len(steps),
+            "non_terminal": next_NT,
+            "codon_index": codon_index,
+            "codon_value": genome[codon_index] if codon_index < len(genome) else -1,
+            "rule_count": grammar.n_rules[NT_index],
+            "choice": index_production_chosen,
+            "expansion": grammar.production_rules[NT_index][index_production_chosen][0],
+            "partial_phenotype": phenotype,
+            "depth": current_depth,
+            "wraps": wraps,
+            "consumed": True,
+            "complete": False,
+        })
+        if current_depth > max_depth:
+            depth_limited = True
             break
         if grammar.production_rules[NT_index][index_production_chosen][2] == 0: #arity 0 (T)
             idx_depth += 1
             nodes += 1
         elif grammar.production_rules[NT_index][index_production_chosen][2] == 1: #arity 1 (PR with one NT)
-            pass        
+            pass
         else: #it is a PR with more than one NT
             arity = grammar.production_rules[NT_index][index_production_chosen][2]
             if idx_depth == 0:
@@ -312,23 +338,29 @@ def mapper_eager(genome, grammar, max_depth):
         else:
             next_NT = None
         idx_genome += 1
-        
+
     if next_NT:
         invalid = True
         used_codons = 0
     else:
         invalid = False
         used_codons = idx_genome
-    
-    depth = max(list_depth)
-   
-    return phenotype, nodes, depth, used_codons, invalid, 0, structure
+        if steps:
+            steps[-1]["complete"] = True
 
-def mapper_lazy(genome, grammar, max_depth):
+    depth = max(list_depth)
+
+    return phenotype, nodes, depth, used_codons, invalid, wraps, structure, steps, depth_limited
+
+def mapper_lazy(genome, grammar, max_depth, wrap=False):
     """
     This mapper is similar to the previous one, but it does not consume codons
-    when mapping a production rule with a single option."""
-    
+    when mapping a production rule with a single option.
+
+    [GEV] Instrumented: records a per-step trace and supports optional genome
+    wrapping. Modified by GE Visualizer; see THIRD_PARTY_NOTICES.md.
+    """
+
     idx_genome = 0
     phenotype = grammar.start_rule
     next_NT = re.search(r"\<(\w+)\>",phenotype).group()
@@ -337,25 +369,49 @@ def mapper_lazy(genome, grammar, max_depth):
     idx_depth = 0
     nodes = 0
     structure = []
-    
-    while next_NT and idx_genome < len(genome):
+    steps = []              # GEV: per-step trace
+    wraps = 0               # GEV: wrap counter
+    depth_limited = False   # GEV: distinguish depth-limit from plain invalid
+
+    while next_NT and len(genome) > 0 and (idx_genome < len(genome) or wrap):
+        if wrap and idx_genome >= len(genome):   # GEV: wrap extension
+            idx_genome = 0
+            wraps += 1
+        codon_index = idx_genome                 # GEV
         NT_index = grammar.non_terminals.index(next_NT)
+        consumed = grammar.n_rules[NT_index] > 1  # GEV: lazy skips single-option rules
         if grammar.n_rules[NT_index] == 1: #there is a single PR for this non-terminal
-            index_production_chosen = 0        
+            index_production_chosen = 0
         else: #we consume one codon, and add the index to the structure
             index_production_chosen = genome[idx_genome] % grammar.n_rules[NT_index]
             structure.append(index_production_chosen)
             idx_genome += 1
-        
+
         phenotype = phenotype.replace(next_NT, grammar.production_rules[NT_index][index_production_chosen][0], 1)
         list_depth[idx_depth] += 1
-        if list_depth[idx_depth] > max_depth:
+        current_depth = list_depth[idx_depth]
+        steps.append({
+            "step": len(steps),
+            "non_terminal": next_NT,
+            "codon_index": codon_index,
+            "codon_value": genome[codon_index] if codon_index < len(genome) else -1,
+            "rule_count": grammar.n_rules[NT_index],
+            "choice": index_production_chosen,
+            "expansion": grammar.production_rules[NT_index][index_production_chosen][0],
+            "partial_phenotype": phenotype,
+            "depth": current_depth,
+            "wraps": wraps,
+            "consumed": consumed,
+            "complete": False,
+        })
+        if current_depth > max_depth:
+            depth_limited = True
             break
         if grammar.production_rules[NT_index][index_production_chosen][2] == 0: #arity 0 (T)
             idx_depth += 1
             nodes += 1
         elif grammar.production_rules[NT_index][index_production_chosen][2] == 1: #arity 1 (PR with one NT)
-            pass        
+            pass
         else: #it is a PR with more than one NT
             arity = grammar.production_rules[NT_index][index_production_chosen][2]
             if idx_depth == 0:
@@ -368,28 +424,29 @@ def mapper_lazy(genome, grammar, max_depth):
             next_NT = next_.group()
         else:
             next_NT = None
-            
-        
+
     if next_NT:
         invalid = True
         used_codons = 0
     else:
         invalid = False
         used_codons = idx_genome
-    
+        if steps:
+            steps[-1]["complete"] = True
+
     depth = max(list_depth)
-   
-    return phenotype, nodes, depth, used_codons, invalid, 0, structure
-            
-def random_initialisation(ind_class, pop_size, bnf_grammar, 
+
+    return phenotype, nodes, depth, used_codons, invalid, wraps, structure, steps, depth_limited
+
+def random_initialisation(ind_class, pop_size, bnf_grammar,
                           min_init_genome_length, max_init_genome_length,
                           max_init_depth, codon_size, codon_consumption,
                           genome_representation):
         """
-        
+
         """
         population = []
-        
+
         for i in range(pop_size):
             genome = []
             init_genome_length = random.randint(min_init_genome_length, max_init_genome_length)
@@ -397,7 +454,7 @@ def random_initialisation(ind_class, pop_size, bnf_grammar,
                 genome.append(random.randint(0, codon_size))
             ind = ind_class(genome, bnf_grammar, max_init_depth, codon_consumption)
             population.append(ind)
-            
+
         if genome_representation == 'list':
             return population
         elif genome_representation == 'numpy':
@@ -406,25 +463,25 @@ def random_initialisation(ind_class, pop_size, bnf_grammar,
             return population
         else:
             raise ValueError("Unkonwn genome representation")
-    
-def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth, 
+
+def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
                             max_init_depth, codon_size, codon_consumption,
                             genome_representation):
         """
-        
+
         """
         #Calculate the number of individuals to be generated with each method
         is_odd = pop_size % 2
         n_grow = int(pop_size/2)
-        
+
         n_sets_grow = max_init_depth - min_init_depth + 1
         set_size = int(n_grow/n_sets_grow)
         remaining = n_grow % n_sets_grow
-        
+
         n_full = n_grow + is_odd + remaining #if pop_size is odd, generate an extra ind with "full"
-        
+
         #TODO check if it is possible to generate inds with max_init_depth
-        
+
         population = []
         #Generate inds using "Grow"
         for i in range(n_sets_grow):
@@ -432,7 +489,7 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
             for j in range(set_size):
                 remainders = [] #it will register the choices
                 possible_choices = [] #it will register the respective possible choices
-    
+
                 phenotype = bnf_grammar.start_rule
                 remaining_NTs = ['<' + term + '>' for term in re.findall(r"\<([\(\)\w,-.]+)\>",phenotype)] #
                 depths = [1]*len(remaining_NTs) #it keeps the depth of each branch
@@ -451,7 +508,7 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
                         if len(total_options) > 1:
                             remainders.append(Ch[3])
                             possible_choices.append(len(total_options))
-                    
+
                     if Ch[2] > 1:
                         if idx_branch == 0:
                             depths = [depths[idx_branch],]*Ch[2] + depths[idx_branch+1:]
@@ -459,9 +516,9 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
                             depths = depths[0:idx_branch] + [depths[idx_branch],]*Ch[2] + depths[idx_branch+1:]
                     if Ch[1] == 'terminal':
                         idx_branch += 1
-                    
+
                     remaining_NTs = ['<' + term + '>' for term in re.findall(r"\<([\(\)\w,-.]+)\>",phenotype)]
-                
+
                 #Generate the genome
                 genome = []
                 if codon_consumption == 'eager' or codon_consumption == 'lazy':
@@ -470,21 +527,21 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
                         genome.append(codon)
                 else:
                     raise ValueError("Unknown mapper")
-                    
+
                 #Include a tail with 50% of the genome's size
                 size_tail = max(int(0.5*len(genome)), 1) #Tail must have at least one codon. Otherwise, in the lazy approach, when we have the last PR with just a single option, the mapping procces will not terminate.
                 for j in range(size_tail):
                     genome.append(random.randint(0,codon_size))
-                    
+
                 #Initialise the individual and include in the population
                 ind = ind_class(genome, bnf_grammar, max_init_depth_, codon_consumption)
-                
+
                 #Check if the individual was mapped correctly
                 if remainders != ind.structure or phenotype != ind.phenotype or max(depths) != ind.depth:
                     raise Exception('error in the mapping')
-                    
-                population.append(ind)    
-            
+
+                population.append(ind)
+
         for i in range(n_full):
             remainders = [] #it will register the choices
             possible_choices = [] #it will register the respective possible choices
@@ -520,9 +577,9 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
                         depths = depths[0:idx_branch] + [depths[idx_branch],]*Ch[2] + depths[idx_branch+1:]
                 if Ch[1] == 'terminal':
                     idx_branch += 1
-                
+
                 remaining_NTs = ['<' + term + '>' for term in re.findall(r"\<([\(\)\w,-.]+)\>",phenotype)]
-            
+
             #Generate the genome
             genome = []
             if codon_consumption == 'eager' or codon_consumption == 'lazy':
@@ -535,19 +592,19 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
             #Include a tail with 50% of the genome's size
             if codon_consumption == 'eager' or codon_consumption == 'lazy':
                 size_tail = max(int(0.5*len(genome)), 1) #Tail must have at least one codon. Otherwise, in the lazy approach, when we have the last PR with just a single option, the mapping procces will not terminate.
-            
+
             for j in range(size_tail):
                 genome.append(random.randint(0,codon_size))
-                
+
             #Initialise the individual and include in the population
             ind = ind_class(genome, bnf_grammar, max_init_depth, codon_consumption)
-            
+
             #Check if the individual was mapped correctly
             if remainders != ind.structure or phenotype != ind.phenotype or max(depths) != ind.depth:
                 raise Exception('error in the mapping')
-                
-            population.append(ind)    
-    
+
+            population.append(ind)
+
         if genome_representation == 'list':
             return population
         elif genome_representation == 'numpy':
@@ -555,12 +612,12 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
                 ind.genome = np.array(ind.genome)
             return population
         else:
-            raise ValueError("Unkonwn genome representation")    
-            
-def crossover_onepoint(parent0, parent1, bnf_grammar, max_depth, codon_consumption, 
+            raise ValueError("Unkonwn genome representation")
+
+def crossover_onepoint(parent0, parent1, bnf_grammar, max_depth, codon_consumption,
                        genome_representation='list', max_genome_length=None):
     """
-    
+
     """
     if parent0.invalid: #used_codons = 0
         possible_crossover_codons0 = len(parent0.genome)
@@ -573,35 +630,35 @@ def crossover_onepoint(parent0, parent1, bnf_grammar, max_depth, codon_consumpti
 
     parent0_genome = parent0.genome.copy()
     parent1_genome = parent1.genome.copy()
-    continue_ = True    
-    
+    continue_ = True
+
     while continue_:
         #Set points for crossover within the effective part of the genomes
         point0 = random.randint(1, possible_crossover_codons0)
         point1 = random.randint(1, possible_crossover_codons1)
-      
+
         if genome_representation == 'list':
             #Operate crossover
             new_genome0 = parent0_genome[0:point0] + parent1_genome[point1:]
             new_genome1 = parent1_genome[0:point1] + parent0_genome[point0:]
         else:
             raise ValueError("Only 'list' representation is implemented")
-        
+
         new_ind0 = reMap(parent0, new_genome0, bnf_grammar, max_depth, codon_consumption)
         new_ind1 = reMap(parent1, new_genome1, bnf_grammar, max_depth, codon_consumption)
-  
+
         continue_ = new_ind0.depth > max_depth or new_ind1.depth > max_depth
-    
+
     if max_genome_length:
         if len(new_ind0.genome) > max_genome_length:
             new_ind0.invalid = True
         if len(new_ind1.genome) > max_genome_length:
             new_ind1.invalid = True
-        
-    del new_ind0.fitness.values, new_ind1.fitness.values
-    return new_ind0, new_ind1   
 
-def mutation_int_flip_per_codon(ind, mut_probability, codon_size, bnf_grammar, max_depth, 
+    del new_ind0.fitness.values, new_ind1.fitness.values
+    return new_ind0, new_ind1
+
+def mutation_int_flip_per_codon(ind, mut_probability, codon_size, bnf_grammar, max_depth,
                                 codon_consumption, max_genome_length=None):
     """
 
@@ -616,16 +673,16 @@ def mutation_int_flip_per_codon(ind, mut_probability, codon_size, bnf_grammar, m
     #genome = ind.genome.copy()
     genome = copy.deepcopy(ind.genome)
     mutated_ = False
-    
+
     while continue_:
         for i in range(possible_mutation_codons):
             if random.random() < mut_probability:
                 genome[i] = random.randint(0, codon_size)
                 mutated_ = True
-    
+
         new_ind = reMap(ind, genome, bnf_grammar, max_depth, codon_consumption)
         continue_ = new_ind.depth > max_depth
-        
+
     if max_genome_length:
         if len(new_ind.genome) > max_genome_length:
             new_ind.invalid = True
@@ -649,7 +706,7 @@ def reMap(ind, genome, bnf_grammar, max_tree_depth, codon_consumption):
         ind.structure = mapper_eager(genome, bnf_grammar, max_tree_depth)
     else:
         raise ValueError("Unknown mapper")
-        
+
     return ind
 
 def replace_nth(string, substring, new_substring, nth):

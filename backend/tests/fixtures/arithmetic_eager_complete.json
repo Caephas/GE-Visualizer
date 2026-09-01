@@ -1,0 +1,40 @@
+{
+  "case_id": "arithmetic_eager_complete",
+  "grammar": "<expr> ::= <term> | <expr> + <term> | <expr> - <term>\n<term> ::= <factor> | <term> * <factor> | <term> / <factor>\n<factor> ::= ( <expr> ) | <var>\n<var> ::= x | y | 1 | 2 | 3",
+  "genome": [
+    153,
+    127,
+    92,
+    357,
+    399,
+    124,
+    41,
+    294,
+    153,
+    268,
+    253,
+    175
+  ],
+  "consumption": "eager",
+  "max_depth": 40,
+  "expected": {
+    "phenotype": "3 / 3 * 2",
+    "used_codons": 10,
+    "nodes": 3,
+    "depth": 7,
+    "invalid": false,
+    "n_wraps": 0,
+    "structure": [
+      0,
+      1,
+      2,
+      0,
+      1,
+      4,
+      1,
+      4,
+      1,
+      3
+    ]
+  }
+}

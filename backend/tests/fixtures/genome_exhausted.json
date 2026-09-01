@@ -1,0 +1,20 @@
+{
+  "case_id": "genome_exhausted",
+  "grammar": "<expr> ::= <term> | <expr> + <term> | <expr> - <term>\n<term> ::= <factor> | <term> * <factor> | <term> / <factor>\n<factor> ::= ( <expr> ) | <var>\n<var> ::= x | y | 1 | 2 | 3",
+  "genome": [
+    1
+  ],
+  "consumption": "eager",
+  "max_depth": 40,
+  "expected": {
+    "phenotype": "<expr> + <term>",
+    "used_codons": 0,
+    "nodes": 0,
+    "depth": 2,
+    "invalid": true,
+    "n_wraps": 0,
+    "structure": [
+      1
+    ]
+  }
+}

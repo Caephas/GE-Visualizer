@@ -8,10 +8,28 @@
 - Copyright (c) 2022-2023, BDS Research Group at University of Limerick
 
 `backend/engine/grape_traced.py` is a vendored copy of the `grape.py` module from
-`grape-bds` 0.1.3. At the Phase 0 checkpoint it is unmodified. Phase 1 will instrument
-the `mapper_lazy` and `mapper_eager` functions so they also record per-step trace
-events for visualization; this file will be updated with a precise modification list
-at that point, as required by the license.
+`grape-bds` 0.1.3.
+
+## Modifications (Phase 1)
+
+The following changes were made to `grape_traced.py` relative to the original
+`grape.py` from `grape-bds` 0.1.3:
+
+- Trailing whitespace was removed throughout (cosmetic, no behavior change).
+- `mapper_eager` and `mapper_lazy` gained an optional `wrap=False` parameter and
+  now also return `(steps, depth_limited)` after the original 7-tuple.
+- Both mappers record a per-step trace entry for every expansion (non-terminal,
+  codon index/value, rule count, choice, expansion text, partial phenotype,
+  depth, wrap count, consumed flag, complete flag) and mark the final step
+  `complete` when the derivation terminates.
+- Both mappers distinguish a depth-limit stop (`depth_limited`) from a plain
+  invalid derivation so the API can report `depth-limited` status.
+- With `wrap=True`, an exhausted genome is re-read from index 0 and a wrap
+  counter is incremented (extension; unpatched GRAPE never wraps).
+- `Individual.__init__` was updated to discard the two new return values.
+
+The unpatched pip-installed package remains the parity oracle: see
+`backend/tests/test_parity.py` and `tools/reference_mapper.py`.
 
 ### BSD 3-Clause License
 

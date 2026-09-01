@@ -16,6 +16,10 @@ export interface GEParams {
   wrap: boolean;
 }
 
+export interface GrammarUpload {
+  grammar_text: string;
+}
+
 export interface MapRequest {
   grammar_text: string;
   genome: number[];

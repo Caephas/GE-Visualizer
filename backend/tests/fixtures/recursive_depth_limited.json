@@ -1,0 +1,27 @@
+{
+  "case_id": "recursive_depth_limited",
+  "grammar": "<start> ::= <start> <start> | x",
+  "genome": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "consumption": "eager",
+  "max_depth": 3,
+  "expected": {
+    "phenotype": "<start> <start> <start> <start>",
+    "used_codons": 0,
+    "nodes": 0,
+    "depth": 4,
+    "invalid": true,
+    "n_wraps": 0,
+    "structure": [
+      0,
+      0,
+      0
+    ]
+  }
+}

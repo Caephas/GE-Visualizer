@@ -1,0 +1,32 @@
+{
+  "case_id": "arithmetic_lazy",
+  "grammar": "<expr> ::= <term> | <expr> + <term> | <expr> - <term>\n<term> ::= <factor> | <term> * <factor> | <term> / <factor>\n<factor> ::= ( <expr> ) | <var>\n<var> ::= x | y | 1 | 2 | 3",
+  "genome": [
+    7,
+    3,
+    12,
+    9,
+    1,
+    5,
+    2
+  ],
+  "consumption": "lazy",
+  "max_depth": 40,
+  "expected": {
+    "phenotype": "y + <term> / <factor> / <factor>",
+    "used_codons": 0,
+    "nodes": 1,
+    "depth": 6,
+    "invalid": true,
+    "n_wraps": 0,
+    "structure": [
+      1,
+      0,
+      0,
+      1,
+      1,
+      2,
+      2
+    ]
+  }
+}
