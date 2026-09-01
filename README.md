@@ -43,6 +43,24 @@ npm run dev
 Open http://localhost:5173 — Vite proxies `/api` requests to the backend at
 `http://127.0.0.1:8000`.
 
+## Makefile
+
+Common commands are wrapped in a `Makefile`:
+
+```bash
+make setup     # one-time: venv + backend + frontend dependencies
+make api       # run the backend (uvicorn, reload on :8000)
+make dev       # run the frontend dev server on :5173
+make test      # backend + frontend test suites
+make smoke     # e2e smoke test (needs `make api` and `make dev` running)
+make lint      # eslint
+make build     # production frontend build
+make schemas   # regenerate the schema-mirror fixture
+make fixtures  # regenerate GRAPE parity golden fixtures
+```
+
+`make help` lists everything.
+
 ## Tests
 
 ```bash
