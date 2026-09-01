@@ -1,3 +1,5 @@
+import groverGrammar from "./grover.bnf?raw";
+
 export const GRAMMAR_ARITHMETIC = [
   "<expr> ::= <term> | <expr> + <term> | <expr> - <term>",
   "<term> ::= <factor> | <term> * <factor> | <term> / <factor>",
@@ -16,6 +18,8 @@ export const GRAMMAR_STRING = [
   "<start> ::= <char> | <char> <start>",
   "<char> ::= a | b | c",
 ].join("\n");
+
+export const GRAMMAR_GROVER = groverGrammar;
 
 export interface ExampleGrammar {
   name: string;
@@ -38,5 +42,11 @@ export const EXAMPLE_GRAMMARS: ExampleGrammar[] = [
     name: "String builder",
     description: "Recursively builds strings from a, b, and c.",
     grammar: GRAMMAR_STRING,
+  },
+  {
+    name: "Grover (3-qubit Qiskit)",
+    description:
+      "Full Grover search program generator. Codon-hungry — use a longer genome, wrap on, and a higher max depth.",
+    grammar: GRAMMAR_GROVER,
   },
 ];

@@ -6,6 +6,7 @@ import { EvolutionPanel } from "./components/EvolutionPanel";
 import { GenomeEditor } from "./components/GenomeEditor";
 import { GrammarPanel } from "./components/GrammarPanel";
 import { GrammarLibrary } from "./components/GrammarLibrary";
+import { HelpPanel } from "./components/HelpPanel";
 import { ParamsPanel } from "./components/ParamsPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
 import { StatusBanner } from "./components/StatusBanner";
@@ -19,6 +20,7 @@ import { DEFAULT_PARAMS, useVisualizer } from "./state";
 function App() {
   const { state, dispatch, map, mapSoon, applyGrammar, generateGenome } = useVisualizer();
   const [genomeLength, setGenomeLength] = useState(10);
+  const [helpOpen, setHelpOpen] = useState(false);
   const trace = useMemo(() => state.result?.trace ?? [], [state.result]);
   const currentStep = Math.max(-1, Math.min(state.currentStep, trace.length - 1));
   const activeStep = currentStep >= 0 ? trace[currentStep] : null;
@@ -97,6 +99,14 @@ function App() {
           <span className="version">v0.1</span>
         </div>
         <div className="header-chips">
+          <button
+            type="button"
+            className="guide-toggle"
+            onClick={() => setHelpOpen(true)}
+            aria-label="Open guide"
+          >
+            Guide
+          </button>
           <span className="header-chip" data-state={state.grammarStatus} title="Grammar status">
             {grammarChip}
           </span>
@@ -168,7 +178,9 @@ function App() {
             {trace.length > 0 ? (
               <DerivationTree root={treeRoot} currentStep={currentStep} />
             ) : (
-              <p className="panel-empty">{state.loading ? "Mapping…" : "No trace yet — click “Map genome”."}</p>
+              <p className="panel-empty">
+                {state.loading ? "Mapping…" : "No trace yet — click “Apply grammar & map”."}
+              </p>
             )}
           </section>
           <section className="strip phenotype-panel">
@@ -187,6 +199,7 @@ function App() {
           </section>
         </main>
       </div>
+      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

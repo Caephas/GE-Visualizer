@@ -51,7 +51,7 @@ describe("EvolutionPanel", () => {
     mockStream();
     render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={vi.fn()} />);
     await act(async () => {
-      fireEvent.click(screen.getByText("Run evolution"));
+      fireEvent.click(screen.getByRole("button", { name: "Run" }));
     });
     expect(await screen.findByText("hello")).toBeInTheDocument();
     expect(screen.getByText("hallo")).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("EvolutionPanel", () => {
     const onDrillDown = vi.fn();
     render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={onDrillDown} />);
     await act(async () => {
-      fireEvent.click(screen.getByText("Run evolution"));
+      fireEvent.click(screen.getByRole("button", { name: "Run" }));
     });
     const loadButtons = await screen.findAllByRole("button", { name: "Load" });
     fireEvent.click(loadButtons[0]);
@@ -76,13 +76,13 @@ describe("EvolutionPanel", () => {
     });
     render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={vi.fn()} />);
     await act(async () => {
-      fireEvent.click(screen.getByText("Run evolution"));
+      fireEvent.click(screen.getByRole("button", { name: "Run" }));
     });
     expect(await screen.findByText("boom")).toBeInTheDocument();
   });
 
   it("disables running until the grammar is valid", () => {
     render(<EvolutionPanel grammarText="not bnf" grammarValid={false} onDrillDown={vi.fn()} />);
-    expect(screen.getByText("Fix grammar to run")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
   });
 });

@@ -14,11 +14,13 @@ describe("StatusBanner", () => {
     );
     expect(screen.getByText("Depth limit reached")).toBeInTheDocument();
     expect(screen.getByText(/max_depth \(5\)/)).toBeInTheDocument();
+    expect(screen.getByText(/raise Max depth/)).toBeInTheDocument();
   });
 
   it("suggests wrapping when the derivation is invalid", () => {
     render(<StatusBanner status="invalid" params={DEFAULT_PARAMS} />);
     expect(screen.getByText("Incomplete derivation")).toBeInTheDocument();
     expect(screen.getByText(/wrapping is off/)).toBeInTheDocument();
+    expect(screen.getByText(/enable Wrap/)).toBeInTheDocument();
   });
 });
