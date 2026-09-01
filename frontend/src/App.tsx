@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Controls } from "./components/Controls";
 import { DerivationTree } from "./components/DerivationTree";
-import { GenomeStrip } from "./components/GenomeStrip";
+import { GenomeEditor } from "./components/GenomeEditor";
 import { GrammarPanel } from "./components/GrammarPanel";
+import { ParamsPanel } from "./components/ParamsPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
 import { StatusBanner } from "./components/StatusBanner";
 import { StepDetail } from "./components/StepDetail";
@@ -12,7 +13,8 @@ import { buildDerivationTree } from "./lib/derivation";
 import { useVisualizer } from "./state";
 
 function App() {
-  const { state, dispatch, map, applyGrammar, generateGenome } = useVisualizer();
+  const { state, dispatch, map, mapSoon, applyGrammar, generateGenome } = useVisualizer();
+  const [genomeLength, setGenomeLength] = useState(10);
   const trace = useMemo(() => state.result?.trace ?? [], [state.result]);
   const currentStep = Math.max(-1, Math.min(state.currentStep, trace.length - 1));
   const activeStep = currentStep >= 0 ? trace[currentStep] : null;
@@ -79,15 +81,29 @@ function App() {
           />
         </section>
         <section className="panel genome-panel">
-          <h2>Genome</h2>
-          <GenomeStrip
-            genome={state.result?.genome ?? state.genome}
-            bitsPerCodon={state.params.bits_per_codon}
-            activeCodonIndex={activeStep?.codon_index ?? null}
-            activeConsumed={activeStep?.consumed ?? null}
-            activeWraps={activeStep?.wraps ?? 0}
-            onGenerate={generateGenome}
-          />
+          <h2>Genome & parameters</h2>
+          <div className="genome-panel-content">
+            <GenomeEditor
+              genome={state.result?.genome ?? state.genome}
+              bitsPerCodon={state.params.bits_per_codon}
+              activeCodonIndex={activeStep?.codon_index ?? null}
+              activeConsumed={activeStep?.consumed ?? null}
+              activeWraps={activeStep?.wraps ?? 0}
+              onChange={(genome) => dispatch({ type: "SET_GENOME", genome })}
+              onAutoMap={(genome) => mapSoon({ genome })}
+              onGenerate={() => generateGenome(genomeLength)}
+            />
+            <ParamsPanel
+              params={state.params}
+              genomeLength={genomeLength}
+              onChange={(partial) => {
+                const nextParams = { ...state.params, ...partial };
+                dispatch({ type: "SET_PARAMS", params: partial });
+                mapSoon({ params: nextParams });
+              }}
+              onGenomeLengthChange={setGenomeLength}
+            />
+          </div>
         </section>
         <section className="panel tree-panel">
           <h2>Derivation tree</h2>

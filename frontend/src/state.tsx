@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { Dispatch } from "react";
 
 import { mapGenome } from "./api";
@@ -84,33 +84,65 @@ export function reducer(state: AppState, action: Action): AppState {
 export interface Visualizer {
   state: AppState;
   dispatch: Dispatch<Action>;
-  map: (overrides?: { grammarText?: string; genome?: number[]; params?: GEParams }) => Promise<void>;
+  map: (overrides?: MapOverrides) => Promise<void>;
+  mapSoon: (overrides?: MapOverrides) => void;
   applyGrammar: (grammarText: string) => void;
-  generateGenome: () => void;
+  generateGenome: (length?: number) => void;
+}
+
+export interface MapOverrides {
+  grammarText?: string;
+  genome?: number[];
+  params?: GEParams;
 }
 
 export function useVisualizer(): Visualizer {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const stateRef = useRef(state);
+  const requestSeqRef = useRef(0);
+  const mapTimerRef = useRef<number | null>(null);
 
-  const map = useCallback(
-    async (overrides?: { grammarText?: string; genome?: number[]; params?: GEParams }) => {
-      dispatch({ type: "MAP_START" });
-      const grammarText = overrides?.grammarText ?? state.grammarText;
-      const genome = overrides?.genome ?? state.genome;
-      const params = overrides?.params ?? state.params;
-      const payload: MapRequest = {
-        grammar_text: grammarText,
-        genome: params.genome_representation === "binary" ? codonsToBits(genome, params.bits_per_codon) : genome,
-        params,
-      };
-      try {
-        const result = await mapGenome(payload);
-        dispatch({ type: "MAP_SUCCESS", result });
-      } catch (error) {
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(
+    () => () => {
+      if (mapTimerRef.current) window.clearTimeout(mapTimerRef.current);
+    },
+    [],
+  );
+
+  const map = useCallback(async (overrides?: MapOverrides) => {
+    const current = stateRef.current;
+    const grammarText = overrides?.grammarText ?? current.grammarText;
+    const genome = overrides?.genome ?? current.genome;
+    const params = overrides?.params ?? current.params;
+    const seq = ++requestSeqRef.current;
+    dispatch({ type: "MAP_START" });
+    const payload: MapRequest = {
+      grammar_text: grammarText,
+      genome: params.genome_representation === "binary" ? codonsToBits(genome, params.bits_per_codon) : genome,
+      params,
+    };
+    try {
+      const result = await mapGenome(payload);
+      if (seq === requestSeqRef.current) dispatch({ type: "MAP_SUCCESS", result });
+    } catch (error) {
+      if (seq === requestSeqRef.current) {
         dispatch({ type: "MAP_ERROR", error: error instanceof Error ? error.message : String(error) });
       }
+    }
+  }, []);
+
+  const mapSoon = useCallback(
+    (overrides?: MapOverrides) => {
+      if (mapTimerRef.current) window.clearTimeout(mapTimerRef.current);
+      mapTimerRef.current = window.setTimeout(() => {
+        void map(overrides);
+      }, 400);
     },
-    [state.grammarText, state.genome, state.params],
+    [map],
   );
 
   useEffect(() => {
@@ -127,11 +159,11 @@ export function useVisualizer(): Visualizer {
     [map],
   );
 
-  const generateGenome = useCallback(() => {
-    const genome = randomGenome(10, state.params.codon_size);
+  const generateGenome = useCallback((length = 10) => {
+    const genome = randomGenome(length, stateRef.current.params.codon_size);
     dispatch({ type: "SET_GENOME", genome });
     void map({ genome });
-  }, [map, state.params.codon_size]);
+  }, [map]);
 
-  return { state, dispatch, map, applyGrammar, generateGenome };
+  return { state, dispatch, map, mapSoon, applyGrammar, generateGenome };
 }
