@@ -2,7 +2,12 @@
 
 import pytest
 
-from backend.engine.mapper import decode_binary_genome, map_with_trace, prepare_genome
+from backend.engine.mapper import (
+    decode_binary_genome,
+    map_with_trace,
+    prepare_genome,
+    validate_grammar,
+)
 from backend.schemas import GEParams
 from backend.tests._cases import GRAMMARS
 
@@ -103,3 +108,9 @@ def test_binary_genome_mapping_returns_decoded_codons() -> None:
 def test_binary_genome_rejects_non_bits() -> None:
     with pytest.raises(ValueError, match="only contain 0 and 1"):
         prepare_genome([0, 2], _params(genome_representation="binary"))
+
+
+def test_validate_grammar_empty() -> None:
+    result = validate_grammar("   ")
+    assert result["valid"] is False
+    assert "empty" in result["error"]

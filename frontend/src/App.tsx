@@ -94,6 +94,9 @@ function App() {
           <h2>Grammar</h2>
           <GrammarPanel
             grammarText={state.grammarText}
+            grammarStatus={state.grammarStatus}
+            grammarError={state.grammarError}
+            grammarRules={state.grammarRules}
             onChange={(grammarText) => dispatch({ type: "SET_GRAMMAR_TEXT", grammarText })}
             onApply={applyGrammar}
             activeRule={activeRule}
@@ -107,6 +110,7 @@ function App() {
             totalSteps={trace.length}
             loading={state.loading}
             error={state.error}
+            canMap={state.grammarStatus === "valid"}
             playing={playing}
             speed={speed}
             consumption={state.params.consumption}
@@ -166,6 +170,7 @@ function App() {
           <h2>Evolution</h2>
           <EvolutionPanel
             grammarText={state.grammarText}
+            grammarValid={state.grammarStatus === "valid"}
             onDrillDown={(genome) => {
               dispatch({ type: "SET_GENOME", genome });
               void map({ genome });

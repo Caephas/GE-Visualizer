@@ -1,4 +1,10 @@
-import type { EvolutionConfig, EvolutionEvent, MapRequest, MapResponse } from "./types";
+import type {
+  EvolutionConfig,
+  EvolutionEvent,
+  GrammarValidation,
+  MapRequest,
+  MapResponse,
+} from "./types";
 
 const API_BASE = "/api";
 
@@ -42,6 +48,14 @@ export function mapGenome(payload: MapRequest): Promise<MapResponse> {
 
 export function uploadGrammar(grammarText: string): Promise<{ message: string }> {
   return request("/grammar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grammar_text: grammarText }),
+  });
+}
+
+export function validateGrammar(grammarText: string): Promise<GrammarValidation> {
+  return request<GrammarValidation>("/grammar/validate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ grammar_text: grammarText }),

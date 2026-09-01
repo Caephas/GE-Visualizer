@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Controls } from "./Controls";
@@ -10,6 +10,7 @@ function renderControls(overrides: Partial<Parameters<typeof Controls>[0]> = {})
     totalSteps: 5,
     loading: false,
     error: null,
+    canMap: true,
     playing: false,
     speed: 2,
     consumption: "eager" as const,
@@ -54,5 +55,10 @@ describe("Controls", () => {
     expect(props.onReset).toHaveBeenCalledOnce();
     fireEvent.keyDown(document.body, { key: "End" });
     expect(props.onStepLast).toHaveBeenCalledOnce();
+  });
+
+  it("disables mapping until the grammar is valid", () => {
+    renderControls({ canMap: false });
+    expect(screen.getByText("Map genome")).toBeDisabled();
   });
 });

@@ -9,6 +9,9 @@ describe("GrammarPanel", () => {
     render(
       <GrammarPanel
         grammarText={GRAMMAR_ARITHMETIC}
+        grammarStatus="valid"
+        grammarError={null}
+        grammarRules={4}
         onChange={vi.fn()}
         onApply={vi.fn()}
         activeRule={null}
@@ -22,6 +25,9 @@ describe("GrammarPanel", () => {
     render(
       <GrammarPanel
         grammarText={GRAMMAR_ARITHMETIC}
+        grammarStatus="valid"
+        grammarError={null}
+        grammarRules={4}
         onChange={vi.fn()}
         onApply={vi.fn()}
         activeRule={{ nonTerminal: "<var>", choice: 1 }}
@@ -36,6 +42,9 @@ describe("GrammarPanel", () => {
     render(
       <GrammarPanel
         grammarText={GRAMMAR_ARITHMETIC}
+        grammarStatus="valid"
+        grammarError={null}
+        grammarRules={4}
         onChange={vi.fn()}
         onApply={onApply}
         activeRule={null}
@@ -43,5 +52,21 @@ describe("GrammarPanel", () => {
     );
     fireEvent.click(screen.getByText("Apply grammar & map"));
     expect(onApply).toHaveBeenCalledWith(GRAMMAR_ARITHMETIC);
+  });
+
+  it("shows grammar validation errors", () => {
+    render(
+      <GrammarPanel
+        grammarText="not bnf"
+        grammarStatus="invalid"
+        grammarError="No grammar rules found."
+        grammarRules={0}
+        onChange={vi.fn()}
+        onApply={vi.fn()}
+        activeRule={null}
+      />,
+    );
+    expect(screen.getByText("✗ Invalid grammar")).toBeInTheDocument();
+    expect(screen.getByText("No grammar rules found.")).toBeInTheDocument();
   });
 });

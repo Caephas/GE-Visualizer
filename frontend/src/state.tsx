@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { Dispatch } from "react";
 
-import { mapGenome } from "./api";
+import { mapGenome, validateGrammar } from "./api";
 import { EXAMPLE_GRAMMARS } from "./examples/grammars";
 import { codonsToBits, randomGenome } from "./lib/encoding";
 import type { GEParams, MapRequest, MapResponse } from "./types";
 
 export interface AppState {
   grammarText: string;
+  grammarStatus: "unknown" | "validating" | "valid" | "invalid";
+  grammarError: string | null;
+  grammarRules: number | null;
   genome: number[];
   params: GEParams;
   result: MapResponse | null;
@@ -20,6 +23,8 @@ export type Action =
   | { type: "SET_GRAMMAR_TEXT"; grammarText: string }
   | { type: "SET_GENOME"; genome: number[] }
   | { type: "SET_PARAMS"; params: Partial<GEParams> }
+  | { type: "VALIDATE_START" }
+  | { type: "VALIDATE_DONE"; valid: boolean; error: string | null; rules: number }
   | { type: "MAP_START" }
   | { type: "MAP_SUCCESS"; result: MapResponse }
   | { type: "MAP_ERROR"; error: string }
@@ -42,6 +47,9 @@ export const DEFAULT_GENOME = [42, 7, 13, 99, 2, 55];
 function initialState(): AppState {
   return {
     grammarText: EXAMPLE_GRAMMARS[0].grammar,
+    grammarStatus: "unknown",
+    grammarError: null,
+    grammarRules: null,
     genome: DEFAULT_GENOME,
     params: DEFAULT_PARAMS,
     result: null,
@@ -54,11 +62,29 @@ function initialState(): AppState {
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "SET_GRAMMAR_TEXT":
-      return { ...state, grammarText: action.grammarText, result: null, currentStep: -1, error: null };
+      return {
+        ...state,
+        grammarText: action.grammarText,
+        grammarStatus: "unknown",
+        grammarError: null,
+        grammarRules: null,
+        result: null,
+        currentStep: -1,
+        error: null,
+      };
     case "SET_GENOME":
       return { ...state, genome: action.genome, result: null, currentStep: -1, error: null };
     case "SET_PARAMS":
       return { ...state, params: { ...state.params, ...action.params }, result: null, currentStep: -1, error: null };
+    case "VALIDATE_START":
+      return { ...state, grammarStatus: "validating" };
+    case "VALIDATE_DONE":
+      return {
+        ...state,
+        grammarStatus: action.valid ? "valid" : "invalid",
+        grammarError: action.error,
+        grammarRules: action.rules,
+      };
     case "MAP_START":
       return { ...state, loading: true, error: null };
     case "MAP_SUCCESS":
@@ -101,6 +127,9 @@ export function useVisualizer(): Visualizer {
   const stateRef = useRef(state);
   const requestSeqRef = useRef(0);
   const mapTimerRef = useRef<number | null>(null);
+  const validateTimerRef = useRef<number | null>(null);
+  const validateSeqRef = useRef(0);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
     stateRef.current = state;
@@ -109,9 +138,43 @@ export function useVisualizer(): Visualizer {
   useEffect(
     () => () => {
       if (mapTimerRef.current) window.clearTimeout(mapTimerRef.current);
+      if (validateTimerRef.current) window.clearTimeout(validateTimerRef.current);
     },
     [],
   );
+
+  const validate = useCallback(async (grammarText?: string) => {
+    const text = grammarText ?? stateRef.current.grammarText;
+    const seq = ++validateSeqRef.current;
+    dispatch({ type: "VALIDATE_START" });
+    try {
+      const result = await validateGrammar(text);
+      if (seq !== validateSeqRef.current) return false;
+      dispatch({ type: "VALIDATE_DONE", valid: result.valid, error: result.error, rules: result.rules });
+      return result.valid;
+    } catch (error) {
+      if (seq !== validateSeqRef.current) return false;
+      dispatch({
+        type: "VALIDATE_DONE",
+        valid: false,
+        error: error instanceof Error ? error.message : String(error),
+        rules: 0,
+      });
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!mountedRef.current) return;
+    dispatch({ type: "VALIDATE_START" });
+    if (validateTimerRef.current) window.clearTimeout(validateTimerRef.current);
+    validateTimerRef.current = window.setTimeout(() => {
+      void validate();
+    }, 400);
+    return () => {
+      if (validateTimerRef.current) window.clearTimeout(validateTimerRef.current);
+    };
+  }, [state.grammarText, validate]);
 
   const map = useCallback(async (overrides?: MapOverrides) => {
     const current = stateRef.current;
@@ -146,17 +209,22 @@ export function useVisualizer(): Visualizer {
   );
 
   useEffect(() => {
-    void map();
-    // Auto-map once on mount; edits re-map explicitly.
+    mountedRef.current = true;
+    void (async () => {
+      const valid = await validate();
+      if (valid) void map();
+    })();
+    // Validate once on mount, then auto-map if the grammar parses.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyGrammar = useCallback(
-    (grammarText: string) => {
+    async (grammarText: string) => {
       dispatch({ type: "SET_GRAMMAR_TEXT", grammarText });
-      void map({ grammarText });
+      const valid = await validate(grammarText);
+      if (valid) void map({ grammarText });
     },
-    [map],
+    [map, validate],
   );
 
   const generateGenome = useCallback((length = 10) => {

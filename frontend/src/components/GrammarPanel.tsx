@@ -10,14 +10,36 @@ export interface ActiveRule {
 
 export interface GrammarPanelProps {
   grammarText: string;
+  grammarStatus: AppGrammarStatus;
+  grammarError: string | null;
+  grammarRules: number | null;
   onChange: (grammarText: string) => void;
   onApply: (grammarText: string) => void;
   activeRule: ActiveRule | null;
 }
 
-export function GrammarPanel({ grammarText, onChange, onApply, activeRule }: GrammarPanelProps) {
+export type AppGrammarStatus = "unknown" | "validating" | "valid" | "invalid";
+
+export function GrammarPanel({
+  grammarText,
+  grammarStatus,
+  grammarError,
+  grammarRules,
+  onChange,
+  onApply,
+  activeRule,
+}: GrammarPanelProps) {
   const [selectedExample, setSelectedExample] = useState(EXAMPLE_GRAMMARS[0].name);
   const rules = useMemo(() => parseBnf(grammarText), [grammarText]);
+
+  const statusLabel =
+    grammarStatus === "validating"
+      ? "Checking grammar…"
+      : grammarStatus === "valid"
+        ? `✓ Grammar valid — ${grammarRules ?? 0} rules`
+        : grammarStatus === "invalid"
+          ? "✗ Invalid grammar"
+          : "Grammar not checked yet";
 
   return (
     <div className="grammar-panel-body">
@@ -46,6 +68,12 @@ export function GrammarPanel({ grammarText, onChange, onApply, activeRule }: Gra
         spellCheck={false}
         aria-label="BNF grammar"
       />
+      <div className={`grammar-status grammar-status-${grammarStatus}`} role="status">
+        {statusLabel}
+        {grammarStatus === "invalid" && grammarError && (
+          <span className="grammar-status-error">{grammarError}</span>
+        )}
+      </div>
       <button type="button" onClick={() => onApply(grammarText)}>
         Apply grammar & map
       </button>

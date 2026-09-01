@@ -52,6 +52,7 @@ def test_map_endpoint_rejects_malformed_grammar() -> None:
     client = TestClient(app)
     response = client.post("/map", json=_map_payload("this is not a bnf grammar", [1, 2]))
     assert response.status_code == 400
+    assert "No grammar rules found" in response.json()["detail"]
 
 
 def test_grammar_store_roundtrip() -> None:
@@ -62,6 +63,26 @@ def test_grammar_store_roundtrip() -> None:
     response = client.get("/grammar")
     assert response.status_code == 200
     assert response.json()["grammar_text"] == GRAMMARS["arithmetic"]
+
+
+def test_validate_grammar_endpoint() -> None:
+    client = TestClient(app)
+    response = client.post("/grammar/validate", json={"grammar_text": GRAMMARS["arithmetic"]})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["valid"] is True
+    assert body["rules"] == 4
+    assert body["start_rule"] == "<expr>"
+    assert body["error"] is None
+
+
+def test_validate_grammar_endpoint_rejects_bad_grammar() -> None:
+    client = TestClient(app)
+    response = client.post("/grammar/validate", json={"grammar_text": "this is not bnf"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["valid"] is False
+    assert "No grammar rules found" in body["error"]
 
 
 def test_evolve_streams_generation_events() -> None:

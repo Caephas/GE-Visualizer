@@ -8,6 +8,7 @@ export interface ControlsProps {
   totalSteps: number;
   loading: boolean;
   error: string | null;
+  canMap: boolean;
   playing: boolean;
   speed: number;
   consumption: Consumption;
@@ -27,6 +28,7 @@ export function Controls({
   totalSteps,
   loading,
   error,
+  canMap,
   playing,
   speed,
   consumption,
@@ -84,7 +86,12 @@ export function Controls({
         <button type="button" onClick={onTogglePlay} disabled={!hasResult}>
           {playing ? "⏸ Pause" : "▶ Play"}
         </button>
-        <button type="button" onClick={onMap} disabled={loading}>
+        <button
+          type="button"
+          onClick={onMap}
+          disabled={loading || !canMap}
+          title={!canMap ? "Fix grammar errors first" : undefined}
+        >
           {loading ? "Mapping…" : "Map genome"}
         </button>
         <button type="button" onClick={onReset} disabled={!hasResult || currentStep <= -1}>
@@ -123,7 +130,7 @@ export function Controls({
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={onMap} disabled={loading}>
+          <button type="button" onClick={onMap} disabled={loading || !canMap}>
             Retry
           </button>
         </div>

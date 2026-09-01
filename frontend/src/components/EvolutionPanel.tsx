@@ -6,6 +6,7 @@ import type { EvolutionConfig, EvolutionEvent, EvolvedIndividual } from "../type
 
 export interface EvolutionPanelProps {
   grammarText: string;
+  grammarValid: boolean;
   onDrillDown: (genome: number[]) => void;
 }
 
@@ -39,7 +40,7 @@ function formatFitness(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
-export function EvolutionPanel({ grammarText, onDrillDown }: EvolutionPanelProps) {
+export function EvolutionPanel({ grammarText, grammarValid, onDrillDown }: EvolutionPanelProps) {
   const [problem, setProblem] = useState<"string_match" | "symbolic_regression">("string_match");
   const [target, setTarget] = useState(TOY_PROBLEMS[0].defaultTarget);
   const [populationSize, setPopulationSize] = useState(100);
@@ -139,8 +140,13 @@ export function EvolutionPanel({ grammarText, onDrillDown }: EvolutionPanelProps
           Seed
           <input type="number" value={seed} onChange={(event) => setSeed(Number(event.target.value))} />
         </label>
-        <button type="button" onClick={() => void run()} disabled={running}>
-          {running ? "Running…" : "Run evolution"}
+        <button
+          type="button"
+          onClick={() => void run()}
+          disabled={running || !grammarValid}
+          title={!grammarValid ? "Fix grammar errors first" : undefined}
+        >
+          {running ? "Running…" : grammarValid ? "Run evolution" : "Fix grammar to run"}
         </button>
       </div>
       <p className="evo-description">{selected.description}</p>

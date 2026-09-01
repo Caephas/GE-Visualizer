@@ -11,13 +11,36 @@ from backend.schemas import GEParams, MapResponse, TraceStep
 
 def grammar_from_text(grammar_text: str) -> grape_traced.Grammar:
     """Parse a BNF grammar exactly the way GRAPE does: from a file."""
+    if not grammar_text or not grammar_text.strip():
+        raise ValueError("Grammar is empty.")
     fd, path = tempfile.mkstemp(suffix=".bnf", text=True)
     try:
         with os.fdopen(fd, "w") as handle:
             handle.write(grammar_text)
-        return grape_traced.Grammar(path)
+        try:
+            return grape_traced.Grammar(path)
+        except IndexError as exc:
+            raise ValueError(
+                "No grammar rules found. Each rule must look like: <start> ::= production | production"
+            ) from exc
+        except Exception as exc:
+            raise ValueError(f"Could not parse grammar ({type(exc).__name__}: {exc})") from exc
     finally:
         os.unlink(path)
+
+
+def validate_grammar(grammar_text: str) -> dict:
+    """Validate a BNF grammar and return a structured result for the UI."""
+    try:
+        grammar = grammar_from_text(grammar_text)
+    except ValueError as exc:
+        return {"valid": False, "rules": 0, "start_rule": None, "error": str(exc)}
+    return {
+        "valid": True,
+        "rules": len(grammar.non_terminals),
+        "start_rule": grammar.start_rule,
+        "error": None,
+    }
 
 
 def decode_binary_genome(bits: list[int], bits_per_codon: int) -> list[int]:

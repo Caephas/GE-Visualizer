@@ -172,6 +172,27 @@ select {
   background: var(--bg-panel);
 }
 
+.grammar-status {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.grammar-status-valid {
+  color: var(--ok);
+}
+
+.grammar-status-invalid {
+  color: var(--danger);
+}
+
+.grammar-status-error {
+  color: var(--fg-muted);
+  word-break: break-word;
+}
+
 .grammar-library {
   border-top: 1px solid var(--border);
   padding-top: 0.75rem;

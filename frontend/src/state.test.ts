@@ -7,6 +7,9 @@ import type { MapResponse, TraceStep } from "./types";
 function baseState(overrides: Partial<AppState> = {}): AppState {
   return {
     grammarText: "<start> ::= x",
+    grammarStatus: "valid",
+    grammarError: null,
+    grammarRules: null,
     genome: DEFAULT_GENOME,
     params: DEFAULT_PARAMS,
     result: null,
@@ -89,6 +92,17 @@ describe("reducer", () => {
     const state = reducer(baseState(), { type: "SET_PARAMS", params: { wrap: true } });
     expect(state.params.wrap).toBe(true);
     expect(state.params.consumption).toBe("eager");
+  });
+
+  it("tracks grammar validation state", () => {
+    let state = reducer(baseState(), { type: "VALIDATE_START" });
+    expect(state.grammarStatus).toBe("validating");
+    state = reducer(state, { type: "VALIDATE_DONE", valid: false, error: "nope", rules: 0 });
+    expect(state.grammarStatus).toBe("invalid");
+    expect(state.grammarError).toBe("nope");
+    state = reducer(state, { type: "SET_GRAMMAR_TEXT", grammarText: "<a> ::= x" });
+    expect(state.grammarStatus).toBe("unknown");
+    expect(state.grammarError).toBeNull();
   });
 
   it("ignores stepping without a result", () => {

@@ -20,6 +20,13 @@ export interface GrammarUpload {
   grammar_text: string;
 }
 
+export interface GrammarValidation {
+  valid: boolean;
+  rules: number;
+  start_rule: string | null;
+  error: string | null;
+}
+
 export interface MapRequest {
   grammar_text: string;
   genome: number[];

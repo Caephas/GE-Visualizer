@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from backend.engine import evolution as evolution_engine
-from backend.engine.mapper import map_with_trace
+from backend.engine.mapper import map_with_trace, validate_grammar
 from backend.schemas import EvolutionConfig, GrammarUpload, MapRequest, MapResponse
 
 app = FastAPI(title="GE Visualizer API")
@@ -29,6 +29,12 @@ def map_genome(request: MapRequest) -> MapResponse:
 def upload_grammar(payload: GrammarUpload, request: Request) -> dict:
     request.app.state.grammar_text = payload.grammar_text
     return {"message": "Grammar uploaded successfully."}
+
+
+@app.post("/grammar/validate")
+def validate_grammar_route(payload: GrammarUpload) -> dict:
+    """Check that a BNF grammar parses before the user maps or evolves."""
+    return validate_grammar(payload.grammar_text)
 
 
 @app.get("/grammar")

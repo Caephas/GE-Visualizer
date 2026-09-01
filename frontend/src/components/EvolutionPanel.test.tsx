@@ -49,7 +49,7 @@ function mockStream() {
 describe("EvolutionPanel", () => {
   it("runs evolution and renders results", async () => {
     mockStream();
-    render(<EvolutionPanel grammarText="<start> ::= x" onDrillDown={vi.fn()} />);
+    render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={vi.fn()} />);
     await act(async () => {
       fireEvent.click(screen.getByText("Run evolution"));
     });
@@ -61,7 +61,7 @@ describe("EvolutionPanel", () => {
   it("drills down into an individual's genome", async () => {
     mockStream();
     const onDrillDown = vi.fn();
-    render(<EvolutionPanel grammarText="<start> ::= x" onDrillDown={onDrillDown} />);
+    render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={onDrillDown} />);
     await act(async () => {
       fireEvent.click(screen.getByText("Run evolution"));
     });
@@ -74,10 +74,15 @@ describe("EvolutionPanel", () => {
     vi.mocked(streamEvolution).mockImplementation(async (_config, onEvent) => {
       onEvent({ type: "error", message: "boom" });
     });
-    render(<EvolutionPanel grammarText="<start> ::= x" onDrillDown={vi.fn()} />);
+    render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={vi.fn()} />);
     await act(async () => {
       fireEvent.click(screen.getByText("Run evolution"));
     });
     expect(await screen.findByText("boom")).toBeInTheDocument();
+  });
+
+  it("disables running until the grammar is valid", () => {
+    render(<EvolutionPanel grammarText="not bnf" grammarValid={false} onDrillDown={vi.fn()} />);
+    expect(screen.getByText("Fix grammar to run")).toBeDisabled();
   });
 });

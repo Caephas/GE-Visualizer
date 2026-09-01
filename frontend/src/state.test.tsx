@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./api", () => ({ mapGenome: vi.fn() }));
+vi.mock("./api", () => ({ mapGenome: vi.fn(), validateGrammar: vi.fn() }));
 
-import { mapGenome } from "./api";
+import { mapGenome, validateGrammar } from "./api";
 import { useVisualizer } from "./state";
 import type { MapResponse } from "./types";
 
@@ -27,16 +27,37 @@ describe("useVisualizer", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.mocked(mapGenome).mockResolvedValue(RESULT);
+    vi.mocked(validateGrammar).mockResolvedValue({
+      valid: true,
+      rules: 1,
+      start_rule: "<start>",
+      error: null,
+    });
   });
 
   afterEach(() => {
     vi.useRealTimers();
     vi.mocked(mapGenome).mockReset();
+    vi.mocked(validateGrammar).mockReset();
   });
 
-  it("maps once on mount", () => {
+  it("validates then maps once on mount", async () => {
     renderHook(() => useVisualizer());
+    await act(async () => {});
+    expect(validateGrammar).toHaveBeenCalledTimes(1);
     expect(mapGenome).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the auto-map when the grammar is invalid", async () => {
+    vi.mocked(validateGrammar).mockResolvedValue({
+      valid: false,
+      rules: 0,
+      start_rule: null,
+      error: "No grammar rules found",
+    });
+    renderHook(() => useVisualizer());
+    await act(async () => {});
+    expect(mapGenome).not.toHaveBeenCalled();
   });
 
   it("debounces successive edit maps and keeps the latest payload", async () => {
