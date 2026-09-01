@@ -88,6 +88,7 @@ export function Controls({
         </button>
         <button
           type="button"
+          className="button-primary"
           onClick={onMap}
           disabled={loading || !canMap}
           title={!canMap ? "Fix grammar errors first" : undefined}
@@ -127,6 +128,10 @@ export function Controls({
         </label>
         <span className="mode-chip">{consumption} consumption</span>
       </div>
+      <p className="shortcut-hint">
+        Shortcuts: <kbd>Space</kbd> play · <kbd>←</kbd>/<kbd>→</kbd> step ·{" "}
+        <kbd>Home</kbd>/<kbd>End</kbd> jump
+      </p>
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
