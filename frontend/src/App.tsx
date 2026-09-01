@@ -124,13 +124,10 @@ function App() {
               hasResult={state.result !== null}
               currentStep={currentStep}
               totalSteps={trace.length}
-              loading={state.loading}
               error={state.error}
-              canMap={state.grammarStatus === "valid"}
               playing={playing}
               speed={speed}
               consumption={state.params.consumption}
-              onMap={() => void map()}
               onStepBack={() => dispatch({ type: "STEP_BACK" })}
               onStepForward={() => dispatch({ type: "STEP_FWD" })}
               onStepLast={() => {

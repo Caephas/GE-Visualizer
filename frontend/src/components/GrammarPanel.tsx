@@ -61,7 +61,11 @@ export function GrammarPanel({
           </option>
         ))}
       </select>
+      <label className="field-label" htmlFor="grammar-textarea">
+        BNF Grammar
+      </label>
       <textarea
+        id="grammar-textarea"
         className="grammar-textarea"
         value={grammarText}
         onChange={(event) => onChange(event.target.value)}

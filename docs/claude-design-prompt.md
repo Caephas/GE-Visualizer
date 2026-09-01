@@ -24,9 +24,7 @@ runs a genetic algorithm and lets users drill into any individual's mapping.
 - Accessibility: keyboard operable, visible focus rings, `prefers-reduced-motion`
   respected (freeze decorative animation, keep timers).
 
-## Design language — "Anthropic: scientific field journal on warm parchment" (light)
-
-The interface should read like a curated research publication on warm paper.
+The interface should read like a curated research publication on warm paper or you can be flexible too.
 
 - **Canvas** `#f0eee6` (page background) · **Card surface** `#faf9f5` · **Oat** `#e3dacc`
   (secondary warm surfaces, hovers) · **Manilla** `#f5e3c7` (highlights, active fills,
@@ -196,11 +194,3 @@ Returns a `text/event-stream` of `data: {json}` frames:
 - error: `{ "type": "error", "message": "..." }`
 Parse frames chunk-safely (frames may split across network chunks).
 
-## Deliverable
-
-Export a zip of a complete Vite + React + TypeScript project (or the `src/` tree with
-`package.json` and `tsconfig.json`) implementing everything above, typed strictly,
-with the components named as listed, the exact API contract, the design tokens above,
-and no placeholder data in the live flows (use the endpoints). Include a short
-`README.md` in the zip noting how to run it (`npm install && npm run dev` with the
-backend at `:8000`).

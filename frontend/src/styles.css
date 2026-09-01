@@ -201,14 +201,15 @@ input[type="range"] {
 }
 
 .phenotype-panel {
+  /* design: 100px */
   background: var(--surface);
-  height: 116px;
+  height: 100px;
   display: flex;
 }
 
 .evolution-panel {
   background: var(--surface);
-  height: 136px;
+  height: 124px;
   overflow-y: auto;
   padding: 10px 16px;
 }
@@ -296,7 +297,7 @@ input[type="range"] {
   width: 100%;
   padding: 10px;
   border: none;
-  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: var(--surface);
   font-weight: 600;
@@ -566,6 +567,7 @@ input[type="range"] {
 }
 
 .shortcut-hint {
+  white-space: nowrap;
   margin: 0;
   font-size: 11px;
   color: var(--muted);
@@ -916,8 +918,8 @@ kbd {
 }
 
 .tree-node {
-  stroke: transparent;
-  stroke-width: 2px;
+  stroke: none;
+  stroke-width: 0;
   animation: popIn 180ms ease-out;
   transform-box: fill-box;
   transform-origin: center;
@@ -946,20 +948,10 @@ kbd {
   fill: var(--feature);
 }
 
-@keyframes treePulse {
-  0%,
-  100% {
-    stroke-width: 2px;
-  }
-  50% {
-    stroke-width: 5px;
-  }
-}
-
 .tree-node.is-active {
   stroke: var(--ink);
   stroke-width: 2px;
-  animation: treePulse 1.2s ease-in-out infinite;
+  
 }
 
 .tree-label {
@@ -967,9 +959,6 @@ kbd {
   font-size: 11px;
   font-family: var(--font-mono);
   pointer-events: none;
-  paint-order: stroke;
-  stroke: var(--surface);
-  stroke-width: 3px;
 }
 
 .tree-label-root {
@@ -1170,7 +1159,7 @@ kbd {
 .button-evo {
   padding: 6px 14px;
   border: none;
-  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: var(--surface);
   font-weight: 600;
@@ -1221,7 +1210,7 @@ kbd {
 
 .evo-config-grid {
   display: grid;
-  grid-template-columns: repeat(5, auto);
+  grid-template-columns: repeat(3, auto);
   gap: 4px 10px;
 }
 
@@ -1366,6 +1355,7 @@ kbd {
   }
 
   .phenotype-panel {
+  /* design: 100px */
     height: auto;
     flex-direction: column;
   }

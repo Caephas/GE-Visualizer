@@ -6,9 +6,7 @@ export interface ControlsProps {
   hasResult: boolean;
   currentStep: number;
   totalSteps: number;
-  loading: boolean;
   error: string | null;
-  canMap: boolean;
   playing: boolean;
   speed: number;
   consumption: Consumption;
@@ -17,7 +15,6 @@ export interface ControlsProps {
   onStepLast: () => void;
   onJump: (step: number) => void;
   onReset: () => void;
-  onMap: () => void;
   onTogglePlay: () => void;
   onSpeedChange: (speed: number) => void;
 }
@@ -26,9 +23,7 @@ export function Controls({
   hasResult,
   currentStep,
   totalSteps,
-  loading,
   error,
-  canMap,
   playing,
   speed,
   consumption,
@@ -37,7 +32,6 @@ export function Controls({
   onStepLast,
   onJump,
   onReset,
-  onMap,
   onTogglePlay,
   onSpeedChange,
 }: ControlsProps) {
@@ -123,15 +117,6 @@ export function Controls({
         >
           ⟲
         </button>
-        <button
-          type="button"
-          className="button-secondary"
-          onClick={onMap}
-          disabled={loading || !canMap}
-          title={!canMap ? "Fix grammar errors first" : undefined}
-        >
-          {loading ? "Mapping…" : "Map genome"}
-        </button>
         <label className="step-slider">
           <span>
             Step <b>{currentStep + 1}</b>/{totalSteps}
@@ -158,17 +143,15 @@ export function Controls({
           <b>{speed}×</b>
         </label>
         <span className="mode-chip">{consumption} consumption</span>
+        <span className="shortcut-hint">
+          <kbd>Space</kbd> play <kbd>←→</kbd> step
+        </span>
       </div>
-      <p className="shortcut-hint">
-        Shortcuts: <kbd>Space</kbd> play · <kbd>←</kbd>/<kbd>→</kbd> step ·{" "}
-        <kbd>Home</kbd>/<kbd>End</kbd> jump
-      </p>
+
       {error && (
         <div className="error-banner" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={onMap} disabled={loading || !canMap}>
-            Retry
-          </button>
+
         </div>
       )}
     </div>

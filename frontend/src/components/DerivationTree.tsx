@@ -10,7 +10,7 @@ export interface DerivationTreeProps {
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
-const FIT_SCALE_CAP = 1.5;
+const FIT_SCALE_CAP = 1.0;
 const NODE_W = 90;
 const NODE_H = 34;
 

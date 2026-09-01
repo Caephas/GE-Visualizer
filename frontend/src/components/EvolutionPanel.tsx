@@ -109,7 +109,7 @@ export function EvolutionPanel({ grammarText, grammarValid, onDrillDown }: Evolu
           disabled={running || !grammarValid}
           title={!grammarValid ? "Fix grammar errors first" : undefined}
         >
-          {running ? "Running…" : grammarValid ? "Run evolution" : "Fix grammar to run"}
+          {running ? "Running…" : "Run"}
         </button>
       </div>
       <div className="evo-controls">
