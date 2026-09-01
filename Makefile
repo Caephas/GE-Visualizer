@@ -5,7 +5,7 @@ UVICORN := $(VENV)/bin/uvicorn
 FRONTEND := frontend
 NPM := npm
 
-.PHONY: help setup api backend dev test test-backend test-frontend typecheck lint build smoke schemas fixtures clean
+.PHONY: help setup api backend dev stop test test-backend test-frontend typecheck lint build smoke schemas fixtures clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -24,6 +24,16 @@ dev: ## Run the Vite dev server on :5173
 	cd $(FRONTEND) && $(NPM) run dev
 
 frontend: dev ## Alias for `make dev`
+
+stop: ## Stop the API and dev servers (ports 8000 and 5173)
+	@echo "Stopping GE Visualizer servers on :8000 and :5173…"
+	@pids=$$(lsof -ti tcp:8000 -ti tcp:5173 2>/dev/null || true); \
+	if [ -n "$$pids" ]; then \
+		echo "$$pids" | xargs kill; \
+		echo "Stopped."; \
+	else \
+		echo "Nothing to stop — no server on :8000 or :5173."; \
+	fi
 
 test: test-backend test-frontend ## Run the full test suite
 

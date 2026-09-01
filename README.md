@@ -132,6 +132,7 @@ Common commands are wrapped in a `Makefile`:
 make setup     # one-time: venv + backend + frontend dependencies
 make api       # run the backend (uvicorn, reload on :8000)
 make dev       # run the frontend dev server on :5173
+make stop      # stop both servers (frees ports 8000 and 5173)
 make test      # backend + frontend test suites
 make smoke     # e2e smoke test (needs `make api` and `make dev` running)
 make lint      # eslint
