@@ -143,6 +143,27 @@ Serve `dist/` from any static host (GitHub Pages, Netlify, an S3 bucket, `python
 No backend, no proxy, no environment variables. Just make sure `.wasm` is served as
 `application/wasm`, which is the default on most static hosts.
 
+### Deploying to GitHub Pages
+
+The repo ships a workflow (`.github/workflows/deploy.yml`) that tests, builds, and publishes to
+Pages on every push to `main`. To switch it on:
+
+1. Push this repository to GitHub.
+2. In **Settings → Pages**, set **Source** to **GitHub Actions**.
+3. Push to `main`, or run the workflow from the **Actions** tab.
+
+A project site is served from `https://<user>.github.io/<repo>/`, so the build takes its base path
+from the `BASE_PATH` env var; the workflow passes `/<repo>/` for you. Local builds stay at `/`, so
+dev, preview, and the media capture are unaffected:
+
+```bash
+BASE_PATH=/GE-Visualizer/ npm run build   # what CI does
+npm run build                             # local, served from /
+```
+
+For a custom domain, or a user site at `<user>.github.io`, set `BASE_PATH=/` — the `env:` block in
+the workflow is the only place that needs changing.
+
 ## Makefile
 
 ```bash

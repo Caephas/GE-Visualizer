@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="GE Visualizer">
+  <rect width="32" height="32" rx="7" fill="#16211a" />
+  <path
+    d="M16 10.5v5M16 15.5 10 21M16 15.5 22 21"
+    fill="none"
+    stroke="#4f9d6f"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <circle cx="16" cy="8.5" r="3.6" fill="#f6faf3" />
+  <circle cx="9.5" cy="22.5" r="3.2" fill="#cfe4c3" />
+  <circle cx="22.5" cy="22.5" r="3.2" fill="#cfe4c3" />
+</svg>
