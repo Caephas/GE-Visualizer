@@ -164,6 +164,13 @@ npm run build                             # local, served from /
 For a custom domain, or a user site at `<user>.github.io`, set `BASE_PATH=/` — the `env:` block in
 the workflow is the only place that needs changing.
 
+`SITE_URL` is the absolute origin used by the `<link rel="canonical">` and Open Graph tags (link
+previews need absolute URLs); it defaults to the GitHub Pages URL. Point it at your domain too:
+
+```bash
+BASE_PATH=/ SITE_URL=https://grammar.example.com/ npm run build
+```
+
 ## Makefile
 
 ```bash
