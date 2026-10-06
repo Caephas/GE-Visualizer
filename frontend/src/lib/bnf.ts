@@ -1,4 +1,4 @@
-/** Display-only BNF parsing. Mapping itself happens in the backend via GRAPE. */
+/** Display-only BNF parsing for the grammar panel. Mapping happens via GRAPE in the engine worker. */
 
 export interface BnfRule {
   nonTerminal: string;

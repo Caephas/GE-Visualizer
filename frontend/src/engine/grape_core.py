@@ -3,14 +3,33 @@
 Created on Tue May 10 06:53:28 2022
 
 @author: allan
+
+[GEV] Instrumented GRAPE for the browser, with the numpy dependency removed so
+it runs under Pyodide. numpy was only used for `np.unique` (set dedup),
+`np.shape` (a length), and the unused 'numpy' genome representation. The
+mapping algorithm is unchanged; frontend/scripts/verify-engine.mjs checks it
+against the golden grape-bds fixtures in frontend/tests/fixtures/.
 """
 
 import re
 import math
 from operator import attrgetter
-import numpy as np
 import random
 import copy
+
+
+def _unique(values):
+    """Order-preserving de-duplication (replaces `np.unique`)."""
+    seen = []
+    for value in values:
+        if value not in seen:
+            seen.append(value)
+    return seen
+
+
+class GrammarError(ValueError):
+    """A grammar that cannot be used: an undefined symbol, or no terminating rule."""
+
 
 class Individual(object):
     """
@@ -48,14 +67,14 @@ class Grammar(object):
     - n_rules: df
 
     """
-    def __init__(self, file_address):
-        #Reading the file
-        with open(file_address, "r") as text_file:
-            bnf_grammar = text_file.read()
-        #Getting rid of all the duplicate spaces
+    def __init__(self, file_address=None, text=None):
+        if text is not None:
+            bnf_grammar = text
+        else:
+            with open(file_address, "r") as text_file:
+                bnf_grammar = text_file.read()
         bnf_grammar = re.sub(r"\s+", " ", bnf_grammar)
 
-        #self.non_terminals = ['<' + term + '>' for term in re.findall(r"\<(\w+)\>\s*::=",bnf_grammar)]
         self.non_terminals = ['<' + term + '>' for term in re.findall(r"\<([\(\)\w,-.]+)\>\s*::=",bnf_grammar)]
         self.start_rule = self.non_terminals[0]
         for i in range(len(self.non_terminals)):
@@ -65,16 +84,11 @@ class Grammar(object):
         rules = [item.replace('\n',"") for item in rules]
         rules = [item.replace('\t',"") for item in rules]
 
-        #list of lists (set of production rules for each non-terminal)
         self.production_rules = [i.split('|') for i in rules]
         for i in range(len(self.production_rules)):
-            #Getting rid of all leading and trailing whitespaces
             self.production_rules[i] = [item.strip() for item in self.production_rules[i]]
             for j in range(len(self.production_rules[i])):
-                #Include in the list the PR itself, NT or T, arity and the production choice label
-                #if re.findall(r"\<(\w+)\>",self.production_rules[i][j]):
                 if re.findall(r"\<([\(\)\w,-.]+)\>",self.production_rules[i][j]):
-                    #arity = len(re.findall(r"\<(\w+)\>",self.production_rules[i][j]))
                     arity = len(re.findall(r"\<([\(\)\w,-.]+)\>",self.production_rules[i][j]))
                     self.production_rules[i][j] = [self.production_rules[i][j] , "non-terminal", arity, j]
                 else:
@@ -82,11 +96,26 @@ class Grammar(object):
         #number of production rules for each non-terminal
         self.n_rules = [len(list_) for list_ in self.production_rules]
 
+        #Every symbol used in a production needs its own rule, otherwise the mapper
+        #fails later with an obscure list lookup.
+        referenced = set()
+        for rule_set in self.production_rules:
+            for production in rule_set:
+                referenced.update(
+                    '<' + name + '>' for name in re.findall(r"\<([\(\)\w,-.]+)\>", production[0])
+                )
+        undefined = sorted(referenced.difference(self.non_terminals))
+        if undefined:
+            raise GrammarError(
+                "Undefined non-terminal(s): " + ", ".join(undefined) + ". Every symbol used in a "
+                "production needs its own <name> ::= ... rule."
+            )
+
         for i in range(len(self.production_rules)):
             for j in range(len(self.production_rules[i])):
                 NTs_to_check_recursiveness = re.findall(r"\<([\(\)\w,-.]+)\>", self.production_rules[i][j][0])
                 NTs_to_check_recursiveness = ['<' + item_ + '>' for item_ in NTs_to_check_recursiveness]
-                unique_NTs = np.unique(NTs_to_check_recursiveness, return_counts=False)
+                unique_NTs = _unique(NTs_to_check_recursiveness)
                 recursive = False
                 for NT_to_check in unique_NTs:
                     stack = [self.non_terminals[i]]
@@ -121,7 +150,6 @@ class Grammar(object):
                 else:
                     for k in range(self.production_rules[i][j][2]): #arity
                         part_PR_depth_to_terminate[i][j].append( list() )
-                        #term = re.findall(r"\<(\w+)\>",self.production_rules[i][j][0])[k]
                         term = re.findall(r"\<([\(\)\w,-.]+)\>",self.production_rules[i][j][0])[k]
                         isolated_non_terminal[i][j].append('<' + term + '>')
         continue_ = True
@@ -130,6 +158,7 @@ class Grammar(object):
             #fill up part_PR_depth_to_terminate, so we check in the beginning
             if None not in NT_depth_to_terminate:
                 continue_ = False
+            made_progress = False
             for i in range(len(self.non_terminals)):
                 for j in range(len(self.production_rules)):
                     for k in range(len(self.production_rules[j])):
@@ -138,9 +167,22 @@ class Grammar(object):
                                 if NT_depth_to_terminate[i]:
                                     if not part_PR_depth_to_terminate[j][k][l]:
                                         part_PR_depth_to_terminate[j][k][l] = NT_depth_to_terminate[i] + 1
+                                        made_progress = True
                                         if [] not in part_PR_depth_to_terminate[j][k]:
                                             if not NT_depth_to_terminate[j]:
                                                 NT_depth_to_terminate[j] = part_PR_depth_to_terminate[j][k][l]
+            #A grammar with no terminating derivation never fills this table, so the loop
+            #above would spin forever. Stop once a whole pass changes nothing.
+            if None in NT_depth_to_terminate and not made_progress:
+                stuck = [
+                    self.non_terminals[i]
+                    for i, depth in enumerate(NT_depth_to_terminate)
+                    if not depth
+                ]
+                raise GrammarError(
+                    "No terminating derivation for " + ", ".join(stuck) + ". Recursive rules need "
+                    "a base case: at least one alternative that reaches terminals without looping."
+                )
         PR_depth_to_terminate = []
         for i in range(len(part_PR_depth_to_terminate)):
             for j in range(len(part_PR_depth_to_terminate[i])):
@@ -159,9 +201,8 @@ def check_recursiveness(self, NT, stack):
     for j in range(len(self.production_rules[idx_NT])):
         NTs_to_check_recursiveness = re.findall(r"\<([\(\)\w,-.]+)\>", self.production_rules[idx_NT][j][0])
         NTs_to_check_recursiveness = ['<' + item_ + '>' for item_ in NTs_to_check_recursiveness]
-        unique_NTs = np.unique(NTs_to_check_recursiveness, return_counts=False)
+        unique_NTs = _unique(NTs_to_check_recursiveness)
         recursive = False
-  #      while unique_NTs.size and not recursive:
         for NT_to_check in unique_NTs:
             if NT_to_check in stack:
                 recursive = True
@@ -180,8 +221,7 @@ def selLexicaseFilterCount(individuals, k):
 
     """
     selected_individuals = []
-    #valid_individuals = individuals#.copy()#[i for i in individuals if not i.invalid]
-    l_samples = np.shape(individuals[0].fitness_each_sample)[0]
+    l_samples = len(individuals[0].fitness_each_sample)
 
     inds_fitness_zero = [ind for ind in individuals if ind.fitness.values[0] == 0]
     if len(inds_fitness_zero) > 0:
@@ -459,7 +499,7 @@ def random_initialisation(ind_class, pop_size, bnf_grammar,
             return population
         elif genome_representation == 'numpy':
             for ind in population:
-                ind.genome = np.array(ind.genome)
+                ind.genome = list(ind.genome)
             return population
         else:
             raise ValueError("Unkonwn genome representation")
@@ -479,8 +519,6 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
         remaining = n_grow % n_sets_grow
 
         n_full = n_grow + is_odd + remaining #if pop_size is odd, generate an extra ind with "full"
-
-        #TODO check if it is possible to generate inds with max_init_depth
 
         population = []
         #Generate inds using "Grow"
@@ -609,7 +647,7 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
             return population
         elif genome_representation == 'numpy':
             for ind in population:
-                ind.genome = np.array(ind.genome)
+                ind.genome = list(ind.genome)
             return population
         else:
             raise ValueError("Unkonwn genome representation")
@@ -670,7 +708,6 @@ def mutation_int_flip_per_codon(ind, mut_probability, codon_size, bnf_grammar, m
         possible_mutation_codons = min(len(ind.genome), ind.used_codons) #in case of wrapping, used_codons can be greater than genome's length
 
     continue_ = True
-    #genome = ind.genome.copy()
     genome = copy.deepcopy(ind.genome)
     mutated_ = False
 
@@ -692,18 +729,15 @@ def mutation_int_flip_per_codon(ind, mut_probability, codon_size, bnf_grammar, m
     return new_ind,
 
 def reMap(ind, genome, bnf_grammar, max_tree_depth, codon_consumption):
-    #TODO refazer todo o reMap para nao copiar o ind
-    #
-    #ind = Individual(genome, bnf_grammar, max_tree_depth, codon_consumption)
     ind.genome = genome
     if codon_consumption == 'lazy':
         ind.phenotype, ind.nodes, ind.depth, \
         ind.used_codons, ind.invalid, ind.n_wraps, \
-        ind.structure = mapper_lazy(genome, bnf_grammar, max_tree_depth)
+        ind.structure, _, _ = mapper_lazy(genome, bnf_grammar, max_tree_depth)
     elif codon_consumption == 'eager':
         ind.phenotype, ind.nodes, ind.depth, \
         ind.used_codons, ind.invalid, ind.n_wraps, \
-        ind.structure = mapper_eager(genome, bnf_grammar, max_tree_depth)
+        ind.structure, _, _ = mapper_eager(genome, bnf_grammar, max_tree_depth)
     else:
         raise ValueError("Unknown mapper")
 

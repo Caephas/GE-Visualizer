@@ -3,13 +3,15 @@ import { useEffect, useRef } from "react";
 export interface HelpPanelProps {
   open: boolean;
   onClose: () => void;
+  onStartTour?: () => void;
+  onSendFeedback?: () => void;
 }
 
 function Kbd({ children }: { children: string }) {
   return <kbd>{children}</kbd>;
 }
 
-export function HelpPanel({ open, onClose }: HelpPanelProps) {
+export function HelpPanel({ open, onClose, onStartTour, onSendFeedback }: HelpPanelProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -40,6 +42,17 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
           </button>
         </header>
 
+        {onStartTour && (
+          <section className="help-section">
+            <button type="button" className="button-primary help-action-button" onClick={onStartTour}>
+              Take the interactive tour
+            </button>
+            <p className="help-paragraph">
+              A one-minute walkthrough that points at each part of the screen, in order.
+            </p>
+          </section>
+        )}
+
         <section className="help-section">
           <h3>Quick start</h3>
           <ol className="help-list help-ordered">
@@ -58,6 +71,7 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
             <li><Kbd>Home</Kbd> <Kbd>End</Kbd> jump to start / end</li>
             <li>Drag the tree to pan, scroll to zoom, use <span className="help-mono">+ − ⊞</span> to zoom and fit</li>
             <li>Hover any tree node to see its step, codon, and choice</li>
+            <li><span className="help-mono">⤓</span> in the tree toolbar exports the tree as SVG or PNG, or the derivation as text / CSV</li>
           </ul>
         </section>
 
@@ -93,6 +107,28 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
             Click <strong>Load</strong> on any individual to copy its genome into the editor and map it —
             then step through exactly why that program looks the way it does.
           </p>
+          <p className="help-paragraph">
+            Pick a problem and the panel offers a matching grammar if yours can't express it — one
+            click and you're ready to run. Click the fitness number on any row to see exactly how
+            that score was calculated.
+          </p>
+          <p className="help-paragraph">
+            The whole run happens in your browser, so keep the population modest — around 300 or fewer.
+            Large runs (big population × generations) can take minutes and make the tab feel stuck.
+          </p>
+        </section>
+
+        <section className="help-section">
+          <h3>Send feedback</h3>
+          <p className="help-paragraph">
+            Found a bug or have an idea? Open a prefilled GitHub issue — it includes your current
+            grammar, genome, and settings so it is easy to reproduce.
+          </p>
+          {onSendFeedback && (
+            <button type="button" className="button-primary help-action-button" onClick={onSendFeedback}>
+              Send feedback
+            </button>
+          )}
         </section>
       </div>
     </div>

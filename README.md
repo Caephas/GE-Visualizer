@@ -1,11 +1,15 @@
 # GE Visualizer
 
-Interactive visualization of Grammatical Evolution (GE): load a BNF grammar, generate or edit
-a genome, and watch — step by step — how codons are consumed, how `codon % #choices` selects
+Interactive visualization of Grammatical Evolution (GE): load a BNF grammar, generate or edit a
+genome, and watch — step by step — how codons are consumed, how `codon % #choices` selects
 production rules, how the derivation tree is constructed, and how the final phenotype emerges.
-The mapping is executed by the real GRAPE library (`grape-bds`, instrumented to emit a full
-per-step trace), and an optional GRAPE + DEAP evolution playground searches for phenotypes that
-solve toy problems.
+An evolution playground then runs a GRAPE + DEAP genetic algorithm and streams each generation as
+it happens.
+
+**It runs 100% in the browser.** The mapping and the evolution are executed by the real GRAPE
+library, instrumented to emit a full per-step trace, running under [Pyodide](https://pyodide.org)
+(CPython compiled to WebAssembly) inside a Web Worker. There is no server to start and nothing to
+install beyond `npm install`.
 
 ## See it in action
 
@@ -22,47 +26,43 @@ the derivation tree, partial phenotype, active rule, and codon strip all update 
   grammar rules, codon strip, derivation tree, and partial phenotype
 - Playback with adjustable speed, keyboard shortcuts (`space`, arrows, `Home`, `End`)
 - Binary and codon genome editing with lossless representation switching
+- "Suggest working settings": works out, from the grammar alone, a genome and depth that
+  complete it — and reports what each consumption mode needs
+- Target reachability: before an evolution run, the playground checks whether the grammar can
+  derive the target at all, and says which characters make it impossible
 - Eager/lazy codon consumption, depth limits, and optional genome wrapping, with clear
   explanations when a derivation stops
 - Evolution playground: string match and symbolic regression problems with per-generation
-  fitness charts and one-click drill-down into any individual
-- Built-in grammar presets (arithmetic, boolean, strings, a 3-qubit Grover program generator)
-  and a "Guide" panel explaining every control and setting
+  fitness charts, worked examples that reach a perfect score, a "how was this scored?"
+  breakdown, and one-click drill-down into any individual
+- Built-in grammar presets (arithmetic, boolean, strings, a 3-qubit Grover program generator),
+  an interactive spotlight tour, and a Guide panel explaining every control and setting
+- Export the derivation: the tree as SVG or PNG, and the full step trace as text or CSV
+- In-app feedback that opens a prefilled GitHub issue with the current state included
 - Shareable state via URL query parameters, plus a local grammar library with export/import
+- Fully client-side: a static build you can host anywhere, with no backend or per-request cost
 
-## System design
-
-### Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
-  subgraph Browser["Browser"]
-    UI["React + TypeScript dashboard<br/>(components · lib · hooks)"]
-    Local["URL state + grammar library<br/>(localStorage)"]
+  subgraph Browser["Browser (single static app)"]
+    UI["React + TypeScript dashboard"]
+    Local["URL state + grammar library (localStorage)"]
+    Worker["Web Worker"]
+    Py["Pyodide · CPython in WebAssembly"]
+    Grape["grape_core.py<br/>instrumented GRAPE"]
+    Deap["deap_lite.py<br/>DEAP subset"]
   end
-  subgraph Vite["Vite dev server"]
-    Proxy["/api proxy"]
-  end
-  subgraph Backend["FastAPI backend (localhost:8000)"]
-    Routes["routes: /grammar/validate · /map · /evolve"]
-    Mapper["engine/mapper.py<br/>trace-aware mapping"]
-    Evo["engine/evolution.py<br/>GRAPE + DEAP"]
-    Grape["grape_traced.py<br/>instrumented grape-bds 0.1.3"]
-    Schemas["schemas.py"]
-  end
-  UI -->|fetch /api/…| Proxy
-  Proxy --> Routes
-  Routes --> Mapper
-  Routes --> Evo
-  Mapper --> Grape
-  Evo --> Grape
-  Schemas -. "frozen contract mirrored by frontend/src/types.ts" .-> UI
+  UI -->|postMessage| Worker
+  Worker --> Py
+  Py --> Grape
+  Py --> Deap
   Local -. state .-> UI
 ```
 
-The frontend never maps or evolves anything itself — every mapping and evolution run happens in
-the real GRAPE library on the backend. The contract between the two sides (`backend/schemas.py`
-↔ `frontend/src/types.ts`) is frozen and enforced by a schema-mirror test.
+The dashboard derives the tree, phenotype, and every synchronized highlight from a single event
+stream (one trace event per grammar expansion), so the view layer is pure client-side code.
 
 ### How a mapping becomes a picture
 
@@ -79,110 +79,117 @@ flowchart LR
 ```
 
 Each trace event records the non-terminal expanded, the codon read, the rule count, the chosen
-production, and the resulting expansion. The dashboard derives the tree prefix, phenotype, and
-all synchronized highlights from that single event stream.
+production, and the resulting expansion.
 
 ### Evolution streaming
 
 ```mermaid
 sequenceDiagram
   participant F as React dashboard
-  participant A as FastAPI
+  participant W as Web Worker (Pyodide)
   participant G as GRAPE + DEAP
-  F->>A: POST /evolve (grammar + config)
-  A->>G: run evolution
+  F->>W: evolve(config)
   loop each generation
-    G-->>A: stats + top individuals
-    A-->>F: data: { type: "generation", … }
+    W->>G: evolve_next()
+    G-->>W: stats + top individuals
+    W-->>F: { type: "generation", … }
   end
-  A-->>F: data: { type: "done", best }
+  W-->>F: { type: "done", best }
   F->>F: fitness chart + results table
   F->>F: Load → copy genome into editor & map
 ```
 
+The GA runs in Python, but the worker pulls one generation at a time and posts each to the UI, so
+the chart fills in live without blocking the page.
+
+### Where the engine lives
+
+- `frontend/src/engine/grape_core.py` — the instrumented GRAPE, with the numpy dependency removed
+  so it runs under Pyodide.
+- `frontend/src/engine/deap_lite.py` — a trimmed, pure-Python subset of DEAP 1.4.4:
+  `Fitness`, `Toolbox`, `creator.create`, and `selTournament`.
+- `frontend/src/engine/ge_bridge.py` — JSON-in/JSON-out entry points (`validate`, `map`,
+  `suggest`, `analyse`, `explain`, `evolve_start`, `evolve_next`).
+- `frontend/src/pyodide/engine.worker.ts` — boots Pyodide, writes the Python modules into its
+  virtual filesystem, and serves requests from the main thread.
+- `frontend/src/pyodide/client.ts` — the main-thread client: request/response correlation and
+  evolution event fan-out.
+
+See [`frontend/src/engine/THIRD_PARTY_NOTICES.md`](frontend/src/engine/THIRD_PARTY_NOTICES.md) for
+the vendored-code provenance.
+
 ## Quickstart
 
-### Backend (FastAPI + grape-bds)
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
-uvicorn backend.main:app --reload
-```
-
-Health check: http://127.0.0.1:8000/health-check
-
-### Frontend (React + Vite)
+Requires **Node 20+** (or 22+) and a modern browser: Pyodide needs WebAssembly and module Web
+Workers.
 
 ```bash
 cd frontend
-npm install
+npm install     # also copies the Pyodide runtime into public/pyodide/
 npm run dev
 ```
 
-Open http://localhost:5173 — Vite proxies `/api` requests to the backend at
-`http://127.0.0.1:8000`.
+Open http://localhost:5173. The first load takes a few seconds while it fetches the CPython runtime
+once (~14 MB, served from your own build); after that it is instant and works offline.
+
+## Build & deploy
+
+```bash
+cd frontend
+npm run build   # → frontend/dist/, a fully static site
+```
+
+Serve `dist/` from any static host (GitHub Pages, Netlify, an S3 bucket, `python -m http.server`).
+No backend, no proxy, no environment variables. Just make sure `.wasm` is served as
+`application/wasm`, which is the default on most static hosts.
 
 ## Makefile
 
-Common commands are wrapped in a `Makefile`:
-
 ```bash
-make setup     # one-time: venv + backend + frontend dependencies
-make api       # run the backend (uvicorn, reload on :8000)
-make dev       # run the frontend dev server on :5173
-make stop      # stop both servers (frees ports 8000 and 5173)
-make test      # backend + frontend test suites
-make smoke     # e2e smoke test (needs `make api` and `make dev` running)
-make lint      # eslint
-make build     # production frontend build
-make schemas   # regenerate the schema-mirror fixture
-make fixtures  # regenerate GRAPE parity golden fixtures
+make setup          # install dependencies and fetch the Pyodide runtime
+make dev            # local dev server on :5173
+make preview        # serve the production build on :4173
+make check          # typecheck + lint + tests + build + engine verification
+make test           # frontend test suite
+make typecheck      # tsc
+make lint           # eslint
+make build          # production build
+make verify-engine  # run the in-browser engine under real Pyodide against the golden fixtures
+make clean          # remove dist/ and the copied Pyodide runtime
+make stop           # stop the dev and preview servers
+make help           # list everything
 ```
-
-`make help` lists everything.
 
 ## Tests
 
 ```bash
-# backend (39 tests: mapping parity vs unpatched grape-bds, golden fixtures, evolution, API)
-pytest
-
-# frontend (89 tests: view logic, components, playback, URL state, schema mirror)
-cd frontend && npm test && npm run typecheck && npm run lint && npm run build
+cd frontend
+npm test               # 127 tests: view logic, components, playback, tour, export, feedback, engine client
+npm run typecheck      # tsc
+npm run lint           # eslint
+npm run build          # tsc + vite build
+npm run verify:engine  # the Python engine under real Pyodide, against the golden fixtures
 ```
+
+The golden fixtures in `frontend/tests/fixtures/` were generated from the **unpatched** `grape-bds`
+package, and `verify:engine` replays them through the browser engine — so a change to
+`grape_core.py` that alters mapping behavior fails the suite.
 
 ## Project structure
 
-- `backend/` — FastAPI app; `engine/grape_traced.py` is a vendored, instrumented copy of GRAPE
-  (`grape-bds` 0.1.3, BSD-3-Clause — see `THIRD_PARTY_NOTICES.md`); `engine/mapper.py` exposes
-  the trace API; `engine/evolution.py` runs the GRAPE/DEAP playground
-- `frontend/` — React + TypeScript dashboard: `lib/` holds pure view logic (derivation tree,
-  BNF display parsing, encoding, serialization), `components/` the panels
-- `docs/ge-visualizer/development-plan.md` — the phased plan (Phases 0–7 complete)
-- `docs/ge-visualizer/qa-checklist.md` — acceptance-criteria evidence and manual checklist
-- `tools/reference_mapper.py` — regenerates golden fixtures from unpatched `grape-bds`
-- `tools/export_schemas.py` — regenerates the schema-mirror fixture for the frontend
-- `tools/e2e_smoke.py` — end-to-end smoke test against a running stack
-
-## End-to-end smoke test
-
-With both processes running:
-
-```bash
-python tools/e2e_smoke.py                                    # direct to the backend
-python tools/e2e_smoke.py --base http://localhost:5173/api   # through the Vite proxy
-```
-
-## Deployment
-
-The frontend is a static build (`cd frontend && npm run build`, serve `dist/`) and the backend
-is a single FastAPI process. Point the static server at the backend (same origin or CORS).
-Docker is intentionally not included — two local processes are all this project needs.
+- `frontend/` — the app and the whole runtime:
+  - `src/engine/` — the Python GRAPE + DEAP engine that runs under Pyodide
+  - `src/pyodide/` — the Web Worker, the main-thread client, and the load-status hook
+  - `src/components/`, `src/lib/`, `src/hooks/` — the React dashboard and pure view logic
+  - `tests/fixtures/` — golden fixtures produced by the unpatched `grape-bds`
+  - `scripts/copy-pyodide.mjs` — vendors the Pyodide runtime into `public/pyodide/`
+  - `scripts/verify-engine.mjs` — runs the engine under Pyodide against the golden fixtures
+  - `scripts/capture-media.mjs` — captures the screenshots below (`npm run capture:media`)
+- `docs/assets/` — the screenshots and animation used above
 
 ## License note
 
 This project vendors a modified copy of GRAPE's `grape.py` (BSD-3-Clause, copyright BDS Research
-Group at University of Limerick) for per-step trace instrumentation. The unpatched pip package
-remains the parity oracle.
+Group at University of Limerick) for per-step trace instrumentation, plus a subset of DEAP
+(LGPL-3.0) for the in-browser evolution. See
+[`frontend/src/engine/THIRD_PARTY_NOTICES.md`](frontend/src/engine/THIRD_PARTY_NOTICES.md).

@@ -1,9 +1,14 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../api", () => ({ streamEvolution: vi.fn() }));
+vi.mock("../api", () => ({
+  streamEvolution: vi.fn(),
+  explainFitness: vi.fn(),
+  analyseTarget: vi.fn(),
+}));
 
-import { streamEvolution } from "../api";
+import { analyseTarget, explainFitness, streamEvolution } from "../api";
+import { TOY_PROBLEMS } from "../examples/problems";
 import type { EvolutionEvent, EvolvedIndividual } from "../types";
 import { EvolutionPanel } from "./EvolutionPanel";
 
@@ -46,10 +51,26 @@ function mockStream() {
   });
 }
 
+beforeEach(() => {
+  vi.mocked(analyseTarget).mockResolvedValue({ reachable: true, missing: [], length: 6 });
+});
+
+function renderPanel(overrides: Partial<Parameters<typeof EvolutionPanel>[0]> = {}) {
+  return render(
+    <EvolutionPanel
+      grammarText="<start> ::= x"
+      grammarValid={true}
+      onDrillDown={vi.fn()}
+      onUseGrammar={vi.fn()}
+      {...overrides}
+    />,
+  );
+}
+
 describe("EvolutionPanel", () => {
   it("runs evolution and renders results", async () => {
     mockStream();
-    render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={vi.fn()} />);
+    renderPanel();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Run" }));
     });
@@ -61,7 +82,7 @@ describe("EvolutionPanel", () => {
   it("drills down into an individual's genome", async () => {
     mockStream();
     const onDrillDown = vi.fn();
-    render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={onDrillDown} />);
+    renderPanel({ onDrillDown });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Run" }));
     });
@@ -74,7 +95,7 @@ describe("EvolutionPanel", () => {
     vi.mocked(streamEvolution).mockImplementation(async (_config, onEvent) => {
       onEvent({ type: "error", message: "boom" });
     });
-    render(<EvolutionPanel grammarText="<start> ::= x" grammarValid={true} onDrillDown={vi.fn()} />);
+    renderPanel();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Run" }));
     });
@@ -82,7 +103,84 @@ describe("EvolutionPanel", () => {
   });
 
   it("disables running until the grammar is valid", () => {
-    render(<EvolutionPanel grammarText="not bnf" grammarValid={false} onDrillDown={vi.fn()} />);
+    renderPanel({ grammarText: "not bnf", grammarValid: false });
     expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+  });
+
+  it("warns about heavy runs and clamps the population", () => {
+    renderPanel();
+    expect(screen.queryByText("Large run")).not.toBeInTheDocument();
+
+    const population = screen.getByLabelText("Pop");
+    fireEvent.change(population, { target: { value: "1000" } });
+    expect(population).toHaveValue(1000);
+    expect(screen.getByText("Large run")).toBeInTheDocument();
+
+    // Absurd values are clamped instead of being queued.
+    fireEvent.change(population, { target: { value: "99999" } });
+    expect(population).toHaveValue(2000);
+  });
+
+  it("disables running when the population is out of range", () => {
+    renderPanel();
+    fireEvent.change(screen.getByLabelText("Pop"), { target: { value: "1" } });
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+  });
+
+  it("offers the matching grammar for the selected problem", () => {
+    const onUseGrammar = vi.fn();
+    renderPanel({ onUseGrammar });
+    const stringProblem = TOY_PROBLEMS[0];
+    expect(screen.getByText(stringProblem.recommendedGrammarName)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use it" }));
+    expect(onUseGrammar).toHaveBeenCalledWith(stringProblem.recommendedGrammar);
+  });
+
+  it("hides the suggestion when the grammar already matches", () => {
+    renderPanel({ grammarText: TOY_PROBLEMS[0].recommendedGrammar });
+    expect(screen.queryByRole("button", { name: "Use it" })).not.toBeInTheDocument();
+  });
+
+  it("explains how a phenotype was scored", async () => {
+    mockStream();
+    vi.mocked(explainFitness).mockResolvedValue({
+      problem: "string_match",
+      fitness: 0.5,
+      lines: ['Phenotype (whitespace removed): "hello"', "Fitness = 0 + 0 = 0"],
+    });
+    renderPanel();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    });
+    await screen.findByText("hello");
+
+    fireEvent.click(screen.getAllByTitle("How is this score calculated?")[0]);
+    expect(await screen.findByText(/Phenotype \(whitespace removed\)/)).toBeInTheDocument();
+    expect(explainFitness).toHaveBeenCalledWith({
+      config: expect.objectContaining({ problem: "string_match", target: "abcabc" }),
+      phenotype: "hello",
+    });
+
+    // Clicking again collapses the detail row.
+    fireEvent.click(screen.getAllByTitle("How is this score calculated?")[0]);
+    await waitFor(() =>
+      expect(screen.queryByText(/Phenotype \(whitespace removed\)/)).not.toBeInTheDocument(),
+    );
+  });
+
+  it("warns when the target cannot be produced by the grammar", async () => {
+    vi.mocked(analyseTarget).mockResolvedValue({ reachable: false, missing: ["z"], length: 6 });
+    renderPanel();
+    expect(await screen.findByText("Unreachable target", {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByText(/no way to produce "z"/)).toBeInTheDocument();
+    expect(analyseTarget).toHaveBeenCalledWith("<start> ::= x", "abcabc");
+  });
+
+  it("stays quiet when the target is reachable", async () => {
+    renderPanel();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.queryByText("Unreachable target")).not.toBeInTheDocument();
   });
 });

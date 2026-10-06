@@ -1,8 +1,4 @@
-/**
- * Mirrors backend/schemas.py (pydantic). These contracts are FROZEN for the
- * duration of the epic; changing them requires re-planning (Phase 0 of the
- * development plan).
- */
+/** Shared data contracts: mapping trace, evolution events, and the engine bridge. */
 
 export type Consumption = "eager" | "lazy";
 export type GenomeRep = "binary" | "codons";

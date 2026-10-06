@@ -2,6 +2,10 @@ import { hierarchy, tree } from "d3-hierarchy";
 
 import type { DerivationNode, TraceStep } from "../types";
 
+/** Node box size, shared by the on-screen tree and the SVG/PNG export. */
+export const NODE_WIDTH = 90;
+export const NODE_HEIGHT = 34;
+
 export type TokenType = "terminal" | "nonterminal";
 
 export interface Token {

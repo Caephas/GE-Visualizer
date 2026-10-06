@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import type { GrammarSuggestion } from "../api";
 import { EXAMPLE_GRAMMARS } from "../examples/grammars";
 import { parseBnf } from "../lib/bnf";
 
@@ -15,6 +16,9 @@ export interface GrammarPanelProps {
   grammarRules: number | null;
   onChange: (grammarText: string) => void;
   onApply: (grammarText: string) => void;
+  onSuggestSettings?: () => void;
+  suggesting?: boolean;
+  suggestion?: GrammarSuggestion | null;
   activeRule: ActiveRule | null;
 }
 
@@ -27,6 +31,9 @@ export function GrammarPanel({
   grammarRules,
   onChange,
   onApply,
+  onSuggestSettings,
+  suggesting = false,
+  suggestion = null,
   activeRule,
 }: GrammarPanelProps) {
   const [selectedExample, setSelectedExample] = useState(EXAMPLE_GRAMMARS[0].name);
@@ -87,6 +94,26 @@ export function GrammarPanel({
       >
         Apply grammar & map
       </button>
+      {onSuggestSettings && (
+        <button
+          type="button"
+          className="button-suggest"
+          onClick={onSuggestSettings}
+          disabled={grammarStatus !== "valid" || suggesting}
+          title="Work out a genome and depth that complete this grammar"
+        >
+          {suggesting ? "Working out…" : "Suggest working settings"}
+        </button>
+      )}
+      {suggestion && (
+        <p className="suggest-note">
+          Shortest derivation: {suggestion.min_codons[suggestion.consumption]}{" "}
+          {suggestion.consumption === "lazy" ? "lazy" : "eager"} codons, depth {suggestion.min_depth}
+          {suggestion.min_codons.lazy < suggestion.min_codons.eager
+            ? ` — lazy would need only ${suggestion.min_codons.lazy}.`
+            : "."}
+        </p>
+      )}
       <div className="rules-label">Rules</div>
       <div className="grammar-rules" aria-label="Parsed grammar rules">
         {rules.map((rule) => (

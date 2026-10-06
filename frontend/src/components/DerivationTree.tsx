@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { layoutTree } from "../lib/derivation";
+import { layoutTree, NODE_HEIGHT, NODE_WIDTH } from "../lib/derivation";
 import type { DerivationNode, TraceStep } from "../types";
+import { TreeExportMenu } from "./TreeExportMenu";
 
 export interface DerivationTreeProps {
   root: DerivationNode;
@@ -12,8 +13,6 @@ export interface DerivationTreeProps {
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 8;
 const FIT_SCALE_CAP = 1.0;
-const NODE_W = 90;
-const NODE_H = 34;
 const TOOLTIP_W = 260;
 const TOOLTIP_H = 110;
 
@@ -205,10 +204,10 @@ export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps
               onMouseLeave={() => setHover(null)}
             >
               <rect
-                x={-NODE_W / 2}
-                y={-NODE_H / 2}
-                width={NODE_W}
-                height={NODE_H}
+                x={-NODE_WIDTH / 2}
+                y={-NODE_HEIGHT / 2}
+                width={NODE_WIDTH}
+                height={NODE_HEIGHT}
                 rx={8}
                 className={`tree-node tree-node-${node.kind} ${node.step === currentStep ? "is-active" : ""}`}
                 aria-label={nodeTitle(node)}
@@ -248,6 +247,7 @@ export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps
         <button type="button" onClick={() => setView(fitView())} aria-label="Fit tree" title="Fit tree">
           ⊞
         </button>
+        <TreeExportMenu root={root} trace={trace ?? []} currentStep={currentStep} />
       </div>
     </div>
   );

@@ -25,4 +25,11 @@ describe("HelpPanel", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it("offers the interactive tour when a handler is provided", () => {
+    const onStartTour = vi.fn();
+    render(<HelpPanel open onClose={vi.fn()} onStartTour={onStartTour} />);
+    fireEvent.click(screen.getByRole("button", { name: "Take the interactive tour" }));
+    expect(onStartTour).toHaveBeenCalledTimes(1);
+  });
 });

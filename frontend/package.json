@@ -3,17 +3,27 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "^18.0.0 || ^20.0.0 || >=22.0.0"
+  },
   "scripts": {
+    "postinstall": "node scripts/copy-pyodide.mjs",
+    "predev": "node scripts/copy-pyodide.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-pyodide.mjs",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
+    "prepreview": "node scripts/copy-pyodide.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:engine": "node scripts/verify-engine.mjs",
+    "capture:media": "node scripts/capture-media.mjs"
   },
   "dependencies": {
     "d3-hierarchy": "^3.1.2",
+    "pyodide": "^314.0.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -30,6 +40,7 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
     "jsdom": "^25.0.1",
+    "puppeteer-core": "^25.12.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.26.0",
     "vite": "^6.2.0",

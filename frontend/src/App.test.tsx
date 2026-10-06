@@ -1,7 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./api", () => ({ mapGenome: vi.fn(), validateGrammar: vi.fn() }));
+vi.mock("./api", () => ({
+  mapGenome: vi.fn(),
+  validateGrammar: vi.fn(),
+  suggestSettings: vi.fn(),
+  analyseTarget: vi.fn().mockResolvedValue({ reachable: true, missing: [], length: 0 }),
+}));
 
 import { mapGenome, validateGrammar } from "./api";
 import App from "./App";
@@ -67,5 +72,32 @@ describe("App", () => {
         screen.getByText((_content, element) => element?.className === "step-slider"),
       ).toHaveTextContent("Step 4/5");
     });
+  });
+
+  it("steps away from a restored step instead of being pulled back to it", async () => {
+    render(<App />);
+    await waitFor(() => {
+      expect(
+        screen.getByText((_content, element) => element?.className === "step-slider"),
+      ).toHaveTextContent("Step 4/5");
+    });
+    fireEvent.click(screen.getByLabelText("Step forward"));
+    await waitFor(() => {
+      expect(
+        screen.getByText((_content, element) => element?.className === "step-slider"),
+      ).toHaveTextContent("Step 5/5");
+    });
+  });
+
+  it("opens the tour on a first visit with no shared state", async () => {
+    window.localStorage.clear();
+    window.history.replaceState(null, "", "/");
+    render(<App />);
+    expect(await screen.findByRole("dialog", { name: "App tour" })).toBeInTheDocument();
+  });
+
+  it("does not interrupt a visit that already has a shared grammar", () => {
+    render(<App />);
+    expect(screen.queryByRole("dialog", { name: "App tour" })).not.toBeInTheDocument();
   });
 });

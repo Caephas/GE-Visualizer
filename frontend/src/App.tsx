@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { suggestSettings } from "./api";
+import type { GrammarSuggestion } from "./api";
 import { Controls } from "./components/Controls";
 import { DerivationTree } from "./components/DerivationTree";
+import { EngineBanner } from "./components/EngineBanner";
 import { EvolutionPanel } from "./components/EvolutionPanel";
+import { FeedbackDialog } from "./components/FeedbackDialog";
 import { GenomeEditor } from "./components/GenomeEditor";
 import { GrammarPanel } from "./components/GrammarPanel";
 import { GrammarLibrary } from "./components/GrammarLibrary";
@@ -11,6 +15,8 @@ import { ParamsPanel } from "./components/ParamsPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
 import { StatusBanner } from "./components/StatusBanner";
 import { StepDetail } from "./components/StepDetail";
+import { Tutorial } from "./components/Tutorial";
+import { TOUR_SEEN_KEY, TUTORIAL_STEPS } from "./components/tutorialSteps";
 import { useUrlState } from "./hooks/useUrlState";
 import { usePlayback } from "./hooks/usePlayback";
 import { buildDerivationTree } from "./lib/derivation";
@@ -21,8 +27,62 @@ function App() {
   const { state, dispatch, map, mapSoon, applyGrammar, generateGenome } = useVisualizer();
   const [genomeLength, setGenomeLength] = useState(10);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState<GrammarSuggestion | null>(null);
   const pendingStepRef = useRef<number | null>(null);
   const pendingTimerRef = useRef<number | null>(null);
+
+  const startTour = useCallback(() => {
+    setHelpOpen(false);
+    setTourOpen(true);
+  }, []);
+
+  // Fill in a genome and depth that actually complete the current grammar.
+  const applySuggestedSettings = useCallback(async () => {
+    setSuggesting(true);
+    try {
+      const result = await suggestSettings(state.grammarText, state.params.consumption);
+      setSuggestion(result);
+      const params = { ...state.params, max_depth: result.suggested_max_depth };
+      dispatch({ type: "SET_PARAMS", params: { max_depth: result.suggested_max_depth } });
+      dispatch({ type: "SET_GENOME", genome: result.genome });
+      setGenomeLength(result.genome.length);
+      // Show the finished derivation rather than the bare root.
+      pendingStepRef.current = Number.MAX_SAFE_INTEGER;
+      await map({ params, genome: result.genome });
+    } catch (error) {
+      dispatch({
+        type: "MAP_ERROR",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setSuggesting(false);
+    }
+  }, [state.grammarText, state.params, dispatch, map]);
+
+  const closeTour = useCallback(() => {
+    try {
+      window.localStorage.setItem(TOUR_SEEN_KEY, "1");
+    } catch {
+      // localStorage can be unavailable (private mode); the tour still closes.
+    }
+    setTourOpen(false);
+  }, []);
+
+  // Show the tour automatically on a first visit, unless the URL already carries
+  // shared state (in which case the visitor came here to look at something).
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = window.localStorage.getItem(TOUR_SEEN_KEY) === "1";
+    } catch {
+      seen = false;
+    }
+    const hasSharedState = new URLSearchParams(window.location.search).has("grammar");
+    if (!seen && !hasSharedState) setTourOpen(true);
+  }, []);
   const trace = useMemo(() => state.result?.trace ?? [], [state.result]);
   const currentStep = Math.max(-1, Math.min(state.currentStep, trace.length - 1));
   const activeStep = currentStep >= 0 ? trace[currentStep] : null;
@@ -33,8 +93,18 @@ function App() {
   const phenotype =
     activeStep?.partial_phenotype ?? (trace.length > 0 ? trace[0].non_terminal : "");
   const canStepForward = state.result !== null && currentStep < trace.length - 1;
+
+  // Any explicit step cancels a pending URL restore, so a restored step never
+  // fights the controls.
+  const clearPendingStep = useCallback(() => {
+    pendingStepRef.current = null;
+  }, []);
+
   const { playing, speed, togglePlay, stop, setSpeed } = usePlayback({
-    onStep: () => dispatch({ type: "STEP_FWD" }),
+    onStep: () => {
+      clearPendingStep();
+      dispatch({ type: "STEP_FWD" });
+    },
     canStep: canStepForward,
   });
 
@@ -128,11 +198,27 @@ function App() {
         <div className="header-chips">
           <button
             type="button"
+            className="guide-toggle tour-toggle"
+            onClick={startTour}
+            aria-label="Start the tour"
+          >
+            Tour
+          </button>
+          <button
+            type="button"
             className="guide-toggle"
             onClick={() => setHelpOpen(true)}
             aria-label="Open guide"
           >
             Guide
+          </button>
+          <button
+            type="button"
+            className="guide-toggle"
+            onClick={() => setFeedbackOpen(true)}
+            aria-label="Send feedback"
+          >
+            Feedback
           </button>
           <span className="header-chip" data-state={state.grammarStatus} title="Grammar status">
             {grammarChip}
@@ -142,6 +228,7 @@ function App() {
           </span>
         </div>
       </header>
+      <EngineBanner />
       <div className="dashboard">
         <aside className="sidebar grammar-panel">
           <GrammarPanel
@@ -149,11 +236,23 @@ function App() {
             grammarStatus={state.grammarStatus}
             grammarError={state.grammarError}
             grammarRules={state.grammarRules}
-            onChange={(grammarText) => dispatch({ type: "SET_GRAMMAR_TEXT", grammarText })}
+            onChange={(grammarText) => {
+              setSuggestion(null);
+              dispatch({ type: "SET_GRAMMAR_TEXT", grammarText });
+            }}
             onApply={applyGrammar}
+            onSuggestSettings={() => void applySuggestedSettings()}
+            suggesting={suggesting}
+            suggestion={suggestion}
             activeRule={activeRule}
           />
-          <GrammarLibrary grammarText={state.grammarText} onLoad={applyGrammar} />
+          <GrammarLibrary
+            grammarText={state.grammarText}
+            onLoad={(grammarText) => {
+              setSuggestion(null);
+              void applyGrammar(grammarText);
+            }}
+          />
         </aside>
         <main className="main">
           <section className="strip controls-panel">
@@ -165,13 +264,26 @@ function App() {
               playing={playing}
               speed={speed}
               consumption={state.params.consumption}
-              onStepBack={() => dispatch({ type: "STEP_BACK" })}
-              onStepForward={() => dispatch({ type: "STEP_FWD" })}
+              onStepBack={() => {
+                clearPendingStep();
+                dispatch({ type: "STEP_BACK" });
+              }}
+              onStepForward={() => {
+                clearPendingStep();
+                dispatch({ type: "STEP_FWD" });
+              }}
               onStepLast={() => {
+                clearPendingStep();
                 if (trace.length > 0) dispatch({ type: "JUMP_TO_STEP", step: trace.length - 1 });
               }}
-              onJump={(step) => dispatch({ type: "JUMP_TO_STEP", step })}
-              onReset={() => dispatch({ type: "RESET_PLAYBACK" })}
+              onJump={(step) => {
+                clearPendingStep();
+                dispatch({ type: "JUMP_TO_STEP", step });
+              }}
+              onReset={() => {
+                clearPendingStep();
+                dispatch({ type: "RESET_PLAYBACK" });
+              }}
               onTogglePlay={togglePlay}
               onSpeedChange={setSpeed}
             />
@@ -218,6 +330,7 @@ function App() {
             <EvolutionPanel
               grammarText={state.grammarText}
               grammarValid={state.grammarStatus === "valid"}
+              onUseGrammar={applyGrammar}
               onDrillDown={(genome) => {
                 dispatch({ type: "SET_GENOME", genome });
                 void map({ genome });
@@ -226,7 +339,26 @@ function App() {
           </section>
         </main>
       </div>
-      <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpPanel
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onStartTour={startTour}
+        onSendFeedback={() => {
+          setHelpOpen(false);
+          setFeedbackOpen(true);
+        }}
+      />
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        context={{
+          grammarStatus: state.grammarStatus,
+          rules: state.grammarRules,
+          mappingStatus: state.result?.status ?? "no mapping",
+          steps: state.result?.trace.length ?? 0,
+        }}
+      />
+      {tourOpen && <Tutorial steps={TUTORIAL_STEPS} onClose={closeTour} />}
     </div>
   );
 }

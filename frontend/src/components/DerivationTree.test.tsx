@@ -44,6 +44,7 @@ describe("DerivationTree", () => {
     expect(screen.getByLabelText("Zoom in")).toBeInTheDocument();
     expect(screen.getByLabelText("Zoom out")).toBeInTheDocument();
     expect(screen.getByLabelText("Fit tree")).toBeInTheDocument();
+    expect(screen.getByLabelText("Export tree")).toBeInTheDocument();
   });
 
   it("shows a tooltip with step and codon details on hover", () => {

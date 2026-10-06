@@ -1,6 +1,0 @@
-fastapi>=0.115
-uvicorn[standard]>=0.34
-grape-bds==0.1.3
-pydantic>=2.10
-pytest>=8.3
-httpx>=0.28

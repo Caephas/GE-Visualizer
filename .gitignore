@@ -1,17 +1,18 @@
-# Python
-venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-
 # Node
 node_modules/
 dist/
 dist-ssr/
 *.local
+
+# Generated: Pyodide runtime copied from node_modules (see frontend/scripts/copy-pyodide.mjs)
+frontend/public/pyodide/
+
+# Python bytecode — the in-browser engine sources live in frontend/src/engine
+__pycache__/
+*.py[cod]
+
+# A local Python env, if one is left over
+venv/
 
 # Editor / OS
 .DS_Store
