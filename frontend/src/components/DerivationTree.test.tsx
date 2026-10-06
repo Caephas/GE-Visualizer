@@ -58,4 +58,41 @@ describe("DerivationTree", () => {
     expect(tooltip).toHaveTextContent("4 % 3 → choice 1");
     expect(tooltip).toHaveTextContent("→ b");
   });
+
+  it("pinch-zooms on touch and pans with one finger", () => {
+    const root = buildDerivationTree(TRACE, TRACE.length);
+    const { container } = render(<DerivationTree root={root} currentStep={1} trace={TRACE} />);
+    const svg = screen.getByLabelText("Derivation tree (drag to pan, scroll to zoom)");
+    const transform = () => container.querySelector("svg g")?.getAttribute("transform") ?? "";
+    const scale = () => Number(/scale\(([\d.]+)\)/.exec(transform())?.[1]);
+    const translate = () =>
+      (/translate\(([-\d.]+) ([-\d.]+)\)/.exec(transform()) ?? []).slice(1).map(Number);
+
+    const before = scale();
+
+    // Two fingers moving apart must zoom in.
+    fireEvent.pointerDown(svg, { pointerId: 1, clientX: 100, clientY: 100, button: 0 });
+    fireEvent.pointerDown(svg, { pointerId: 2, clientX: 200, clientY: 100, button: 0 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 50, clientY: 100 });
+    fireEvent.pointerMove(svg, { pointerId: 2, clientX: 250, clientY: 100 });
+    expect(scale()).toBeGreaterThan(before);
+
+    const zoomed = scale();
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(svg, { pointerId: 2, clientX: 200, clientY: 100 });
+    expect(scale()).toBeLessThan(zoomed);
+
+    fireEvent.pointerUp(svg, { pointerId: 1 });
+    fireEvent.pointerUp(svg, { pointerId: 2 });
+
+    // A single finger again should pan rather than zoom.
+    const scaleBeforePan = scale();
+    const [tx, ty] = translate();
+    fireEvent.pointerDown(svg, { pointerId: 3, clientX: 150, clientY: 150, button: 0 });
+    fireEvent.pointerMove(svg, { pointerId: 3, clientX: 190, clientY: 180 });
+    const [tx2, ty2] = translate();
+    expect(tx2 - tx).toBeCloseTo(40, 0);
+    expect(ty2 - ty).toBeCloseTo(30, 0);
+    expect(scale()).toBeCloseTo(scaleBeforePan, 5);
+  });
 });

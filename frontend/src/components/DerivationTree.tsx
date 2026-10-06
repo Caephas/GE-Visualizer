@@ -74,6 +74,8 @@ export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps
   const [panning, setPanning] = useState(false);
   const [hover, setHover] = useState<HoverState | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; tx: number; ty: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDistanceRef = useRef<number | null>(null);
   const prevCountRef = useRef(0);
 
   const layout = useMemo(() => layoutTree(root), [root]);
@@ -141,13 +143,45 @@ export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps
   }, [zoomAt]);
 
   const onPointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
-    if (event.button !== 0) return;
     (event.target as Element).setPointerCapture?.(event.pointerId);
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointersRef.current.size === 2) {
+      // A second finger means pinch-to-zoom, not panning.
+      const [first, second] = [...pointersRef.current.values()];
+      pinchDistanceRef.current = Math.hypot(first.x - second.x, first.y - second.y);
+      dragRef.current = null;
+      setPanning(false);
+      return;
+    }
+
+    if (event.button !== 0) return;
     dragRef.current = { startX: event.clientX, startY: event.clientY, tx: view.tx, ty: view.ty };
     setPanning(true);
   };
 
   const onPointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    const tracked = pointersRef.current.get(event.pointerId);
+    if (tracked) {
+      tracked.x = event.clientX;
+      tracked.y = event.clientY;
+    }
+
+    if (pinchDistanceRef.current !== null && pointersRef.current.size >= 2) {
+      const [first, second] = [...pointersRef.current.values()];
+      const distance = Math.hypot(first.x - second.x, first.y - second.y);
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (rect && pinchDistanceRef.current > 0 && distance > 0) {
+        zoomAt(
+          (first.x + second.x) / 2 - rect.left,
+          (first.y + second.y) / 2 - rect.top,
+          distance / pinchDistanceRef.current,
+        );
+      }
+      pinchDistanceRef.current = distance;
+      return;
+    }
+
     const drag = dragRef.current;
     if (!drag) return;
     setView((current) => ({
@@ -157,9 +191,13 @@ export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps
     }));
   };
 
-  const endPan = () => {
-    dragRef.current = null;
-    setPanning(false);
+  const endPointer = (event: React.PointerEvent<SVGSVGElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    if (pointersRef.current.size < 2) pinchDistanceRef.current = null;
+    if (pointersRef.current.size === 0) {
+      dragRef.current = null;
+      setPanning(false);
+    }
   };
 
   const updateHover = (node: DerivationNode) => (event: React.MouseEvent) => {
@@ -182,8 +220,9 @@ export function DerivationTree({ root, currentStep, trace }: DerivationTreeProps
         className={panning ? "panning" : ""}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={endPan}
-        onPointerLeave={endPan}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
+        onPointerLeave={endPointer}
         aria-label="Derivation tree (drag to pan, scroll to zoom)"
       >
         <g transform={transform}>

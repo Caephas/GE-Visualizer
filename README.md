@@ -25,6 +25,8 @@ the derivation tree, partial phenotype, active rule, and codon strip all update 
 - Live step-through of the genotype → phenotype mapping: synchronized highlights across the
   grammar rules, codon strip, derivation tree, and partial phenotype
 - Playback with adjustable speed, keyboard shortcuts (`space`, arrows, `Home`, `End`)
+- Responsive down to small phones: the panels stack, the page scrolls normally, and the tree
+  supports pinch-to-zoom on touch screens
 - Binary and codon genome editing with lossless representation switching
 - "Suggest working settings": works out, from the grammar alone, a genome and depth that
   complete it — and reports what each consumption mode needs
@@ -192,12 +194,16 @@ make help           # list everything
 
 ```bash
 cd frontend
-npm test               # 127 tests: view logic, components, playback, tour, export, feedback, engine client
+npm test               # 128 tests: view logic, components, playback, tour, export, feedback, engine client
 npm run typecheck      # tsc
 npm run lint           # eslint
 npm run build          # tsc + vite build
 npm run verify:engine  # the Python engine under real Pyodide, against the golden fixtures
 ```
+
+With a preview server running (`npm run preview`), `npm run check:responsive` loads the app at
+phone, tablet, and desktop widths and fails if anything overflows or forces mobile Chrome to zoom
+the page out. `npm run capture:media` regenerates the screenshots above the same way.
 
 The golden fixtures in `frontend/tests/fixtures/` were generated from the **unpatched** `grape-bds`
 package, and `verify:engine` replays them through the browser engine — so a change to

@@ -80,6 +80,7 @@ input[type="range"] {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   min-height: 0;
   overflow: hidden;
 }
@@ -1705,6 +1706,7 @@ kbd {
   .app {
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow: visible;
   }
 
@@ -2096,4 +2098,125 @@ kbd {
   font-size: 11px;
   line-height: 1.5;
   color: var(--ink-faint);
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .app-header h1 {
+    font-size: 18px;
+  }
+
+  /* The chip row is what forces a wide layout viewport on a phone. */
+  .header-chips {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .header-chip {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  .guide-toggle {
+    padding: 6px 10px;
+  }
+
+  .sidebar {
+    max-height: none;
+  }
+
+  .controls-panel,
+  .genome-panel {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .tree-panel {
+    min-height: 320px;
+  }
+
+  .status-banner {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    padding: 8px 12px;
+  }
+
+  .status-banner-tip {
+    width: 100%;
+    margin-left: 0;
+    white-space: normal;
+  }
+
+  .tree-node-count {
+    top: 8px;
+    right: 10px;
+  }
+
+  .tree-toolbar {
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .phenotype-panel {
+    height: auto;
+  }
+
+  .feedback-overlay {
+    padding: 12px;
+  }
+
+  .feedback-card {
+    max-height: 88vh;
+    padding: 14px;
+  }
+
+  .evo-config-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .evo-field input {
+    width: 100%;
+    max-width: 60px;
+  }
+
+  .suggest-note,
+  .engine-banner-detail {
+    font-size: 10px;
+  }
+}
+
+/* Touch devices: give the controls a comfortable tap target. */
+
+@media (pointer: coarse) {
+  .icon-button,
+  .tree-toolbar button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .guide-toggle,
+  .tutorial-back,
+  .tutorial-next,
+  .feedback-secondary,
+  .button-suggest {
+    min-height: 40px;
+  }
+
+  .codon-input {
+    min-width: 40px;
+    min-height: 32px;
+  }
+
+  .tree-tooltip {
+    display: none;
+  }
 }
