@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import random
 import re
 
@@ -142,6 +143,11 @@ def analyse_json(request_json: str) -> str:
     return json.dumps(analyse_target(request["grammar_text"], request.get("target", "")))
 
 
+def check_fitness_json(request_json: str) -> str:
+    request = json.loads(request_json)
+    return json.dumps(check_fitness(request["source"], request.get("sample", "x + 1")))
+
+
 # --------------------------------------------------------------------------- #
 # Fitness
 # --------------------------------------------------------------------------- #
@@ -198,13 +204,84 @@ def _symbolic_regression_fitness(phenotype: str, samples: list, coeffs: list) ->
     return _regression_detail(phenotype, samples, coeffs)["fitness"]
 
 
-def _build_fitness(config: dict):
+def _compile_fitness(source: str):
+    """Compile a user-supplied `def fitness(phenotype) -> float`."""
+    if not source or not source.strip():
+        raise ValueError("No fitness function provided.")
+    namespace: dict = {}
+    try:
+        exec(compile(source, "<fitness>", "exec"), namespace)
+    except SyntaxError as exc:
+        raise ValueError(f"Syntax error on line {exc.lineno}: {exc.msg}") from exc
+    function = namespace.get("fitness")
+    if not callable(function):
+        raise ValueError(
+            "Define a function called fitness, for example: def fitness(phenotype): return 0.0"
+        )
+    return function
+
+
+def _custom_fitness(config: dict, errors: list):
+    """Wrap a user function so one bad individual cannot kill the run."""
+    function = _compile_fitness(config.get("fitness_source", ""))
+
+    def score(phenotype: str) -> float:
+        try:
+            return _coerce_score(function(phenotype))
+        except Exception as exc:  # noqa: BLE001 - reported back to the user
+            if not errors:
+                errors.append(f"{type(exc).__name__}: {exc}")
+            return _PENALTY
+
+    return score
+
+
+def _coerce_score(value) -> float:
+    """Accept a number, or the (score, logs) that notebook objectives often return."""
+    if isinstance(value, (tuple, list)) and value:
+        value = value[0]
+    try:
+        score = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"returned {value!r}; return a number, or (score, logs)") from exc
+    # An infinity is a legitimate "worst possible" score; NaN would break sorting.
+    if score != score:
+        raise ValueError("returned NaN")
+    # JSON has no Infinity, and the browser parses these events with JSON.parse,
+    # so map the extremes onto the same penalty the built-in objectives use.
+    if not math.isfinite(score):
+        return _PENALTY
+    return score
+
+
+def _build_fitness_with_errors(config: dict, errors: list):
+    if config.get("problem") == "custom":
+        return _custom_fitness(config, errors)
     if config.get("problem") == "string_match":
         target = config.get("target") or "hello"
         return lambda phenotype: _string_match_fitness(phenotype, target)
     samples = config.get("samples") or [round(-0.9 + 0.1 * i, 6) for i in range(19)]
     coeffs = config.get("coeffs") or [0.0, 1.0, 1.0]
     return lambda phenotype: _symbolic_regression_fitness(phenotype, samples, coeffs)
+
+
+def check_fitness(source: str, sample: str = "x + 1") -> dict:
+    """Compile a user function and try it on one phenotype, for the editor."""
+    try:
+        function = _compile_fitness(source)
+    except ValueError as exc:
+        return {"valid": False, "error": str(exc), "sample": None, "score": None}
+    try:
+        score = _coerce_score(function(sample))
+    except Exception as exc:  # noqa: BLE001 - reported back to the user
+        return {
+            "valid": True,
+            "error": None,
+            "sample": sample,
+            "score": None,
+            "call_error": f"{type(exc).__name__}: {exc}",
+        }
+    return {"valid": True, "error": None, "sample": sample, "score": score, "call_error": None}
 
 
 def _poly_label(coeffs: list) -> str:
@@ -271,7 +348,10 @@ def evolution_events(config: dict):
     random.seed(config.get("seed", 42))
 
     grammar = _grammar_from_text(config["grammar_text"])
-    fitness_fn = _build_fitness(config)
+    # A custom fitness may throw on some individuals; keep the first message so
+    # the run survives and the UI can explain what went wrong.
+    fitness_errors: list = []
+    fitness_fn = _build_fitness_with_errors(config, fitness_errors)
     consumption = config.get("consumption", "eager")
     top_k = int(config.get("top_k", 20))
 
@@ -342,6 +422,7 @@ def evolution_events(config: dict):
         yield {
             "type": "generation",
             "gen": generation,
+            "fitness_error": fitness_errors[0] if fitness_errors else None,
             "best_fitness": float(best.fitness.values[0]),
             "mean_fitness": float(sum(fits) / len(fits)),
             "worst_fitness": float(max(fits)),
@@ -359,6 +440,7 @@ def evolution_events(config: dict):
         "generations": generation,
         "best_fitness": float(best_overall.fitness.values[0]),
         "best": _individual_payload(best_overall),
+        "fitness_error": fitness_errors[0] if fitness_errors else None,
     }
 
 

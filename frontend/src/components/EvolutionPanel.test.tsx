@@ -5,9 +5,16 @@ vi.mock("../api", () => ({
   streamEvolution: vi.fn(),
   explainFitness: vi.fn(),
   analyseTarget: vi.fn(),
+  checkFitness: vi.fn().mockResolvedValue({
+    valid: true,
+    error: null,
+    sample: "x + 1",
+    score: 1,
+  }),
+  restartEngine: vi.fn(),
 }));
 
-import { analyseTarget, explainFitness, streamEvolution } from "../api";
+import { analyseTarget, checkFitness, explainFitness, streamEvolution } from "../api";
 import { TOY_PROBLEMS } from "../examples/problems";
 import type { EvolutionEvent, EvolvedIndividual } from "../types";
 import { EvolutionPanel } from "./EvolutionPanel";
@@ -182,5 +189,47 @@ describe("EvolutionPanel", () => {
       await new Promise((resolve) => setTimeout(resolve, 600));
     });
     expect(screen.queryByText("Unreachable target")).not.toBeInTheDocument();
+  });
+
+  it("shows the custom fitness editor with a live check", async () => {
+    vi.mocked(checkFitness).mockResolvedValue({
+      valid: true,
+      error: null,
+      sample: "x + 1",
+      score: 2,
+    });
+    renderPanel();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "custom" } });
+
+    const editor = await screen.findByLabelText("Fitness function");
+    expect((editor as HTMLTextAreaElement).value).toContain("def fitness");
+    expect(await screen.findByText(/it returns 2/)).toBeInTheDocument();
+  });
+
+  it("blocks a run while the custom fitness cannot compile", async () => {
+    vi.mocked(checkFitness).mockResolvedValue({
+      valid: false,
+      error: "Syntax error on line 1: expected ':'",
+      sample: null,
+      score: null,
+    });
+    renderPanel();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "custom" } });
+    expect(await screen.findByText(/Syntax error on line 1/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run" })).toBeDisabled();
+  });
+
+  it("loads the Grover example with a genome long enough for it", async () => {
+    const onUseGrammar = vi.fn();
+    renderPanel({ onUseGrammar });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "custom" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Grover example" }));
+
+    expect(onUseGrammar).toHaveBeenCalledWith(expect.stringContaining("<Program>"));
+    const editor = screen.getByLabelText("Fitness function") as HTMLTextAreaElement;
+    expect(editor.value).toContain("QuantumCircuit");
+    expect(screen.getByLabelText("Init min")).toHaveValue(25);
+    expect(screen.getByLabelText("Init max")).toHaveValue(45);
+    expect(screen.getByLabelText("Gen")).toHaveValue(60);
   });
 });

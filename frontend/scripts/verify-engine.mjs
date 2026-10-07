@@ -215,6 +215,108 @@ if (produced > 0 && rejected === 0) {
   console.log(`FAIL reachability disagreed with the mapper (${rejected} of ${produced})`);
 }
 
+// 2c2. Custom fitness: compile checks, notebook-style returns, and a real run.
+const goodSource = 'def fitness(phenotype):\n    return abs(len(phenotype) - 4)';
+const tupleSource = [
+  'def fitness(phenotype, log_states=True):',
+  '    if not isinstance(phenotype, str):',
+  '        return (float("inf"), []) if log_states else float("inf")',
+  '    return (abs(len(phenotype.replace(" ", "")) - 4), [{"note": "logs"}])',
+].join("\n");
+
+const goodCheck = call("check_fitness_json", JSON.stringify({ source: goodSource, sample: "abcd" }));
+const syntaxCheck = call(
+  "check_fitness_json",
+  JSON.stringify({ source: "def fitness(p)", sample: "x" }),
+);
+const missingCheck = call(
+  "check_fitness_json",
+  JSON.stringify({ source: "def other(p):\n    return 1", sample: "x" }),
+);
+const tupleCheck = call(
+  "check_fitness_json",
+  JSON.stringify({ source: tupleSource, sample: "abcd" }),
+);
+
+const evolveToEnd = (config) => {
+  const { run } = call("evolve_start_json", JSON.stringify(config));
+  let last = null;
+  for (let i = 0; i < 5000; i += 1) {
+    const event = call("evolve_next_json", JSON.stringify(run));
+    if (event === null) break;
+    last = event;
+  }
+  return last;
+};
+
+const customRun = evolveToEnd({
+  grammar_text: stringGrammar,
+  problem: "custom",
+  fitness_source: tupleSource,
+  target: "",
+  samples: [],
+  coeffs: [],
+  population_size: 30,
+  generations: 10,
+  p_crossover: 0.8,
+  p_mutation: 0.1,
+  elite_size: 1,
+  tournament_size: 3,
+  codon_size: 400,
+  max_depth: 40,
+  min_init_genome_length: 5,
+  max_init_genome_length: 12,
+  max_genome_length: null,
+  consumption: "eager",
+  top_k: 5,
+  seed: 7,
+  early_stop: true,
+});
+
+const customProblems = [];
+if (!goodCheck.valid || goodCheck.score !== 0) customProblems.push(`good check: ${JSON.stringify(goodCheck)}`);
+if (syntaxCheck.valid || !/Syntax error/.test(syntaxCheck.error ?? "")) customProblems.push("syntax error not reported");
+if (missingCheck.valid || !/function called fitness/.test(missingCheck.error ?? "")) customProblems.push("missing fitness() not reported");
+if (tupleCheck.score !== 0) customProblems.push(`(score, logs) return not accepted: ${JSON.stringify(tupleCheck)}`);
+if (customRun?.type !== "done" || customRun.best_fitness !== 0) customProblems.push(`custom run: ${JSON.stringify(customRun?.best_fitness)}`);
+if (customProblems.length === 0) {
+  console.log("OK   custom fitness (compile checks, (score, logs) return, run converges)");
+} else {
+  failures += 1;
+  console.log("FAIL custom fitness", customProblems);
+}
+
+// 2c3. The bundled Grover objective must score known circuits correctly.
+const groverFitnessSource = await readFile(
+  path.join(here, "..", "src", "examples", "grover-fitness.py"),
+  "utf8",
+);
+const idealGrover = [
+  "qc.h(0)", "qc.h(1)", "qc.h(2)",
+  "qc.x(1)", "qc.h(2)", "qc.ccx(0,1,2)", "qc.h(2)", "qc.x(1)",
+  "qc.h(0)", "qc.h(1)", "qc.h(2)", "qc.x(0)", "qc.x(1)", "qc.x(2)",
+  "qc.h(2)", "qc.ccx(0,1,2)", "qc.h(2)", "qc.x(0)", "qc.x(1)", "qc.x(2)",
+  "qc.h(0)", "qc.h(1)", "qc.h(2)",
+];
+const asPhenotype = (lines) => lines.map((line) => `"${line}\\n"`).join(" ");
+const idealScore = call(
+  "check_fitness_json",
+  JSON.stringify({ source: groverFitnessSource, sample: asPhenotype(idealGrover) }),
+).score;
+const uniformScore = call(
+  "check_fitness_json",
+  JSON.stringify({
+    source: groverFitnessSource,
+    sample: asPhenotype(["qc.h(0)", "qc.h(1)", "qc.h(2)"]),
+  }),
+).score;
+if (Math.abs(idealScore - 0.21875) < 0.001 && Math.abs(uniformScore - 0.875) < 0.001) {
+  console.log(`OK   Grover objective (one ideal iteration ${idealScore.toFixed(4)}, uniform ${uniformScore.toFixed(4)})`);
+} else {
+  failures += 1;
+  console.log("FAIL Grover objective", { idealScore, uniformScore });
+}
+
 // 2d. Fitness explanations (the "why this score?" breakdown)
 const matchExplain = call(
   "explain_json",

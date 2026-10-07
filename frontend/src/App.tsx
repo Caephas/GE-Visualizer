@@ -13,6 +13,7 @@ import { GrammarLibrary } from "./components/GrammarLibrary";
 import { HelpPanel } from "./components/HelpPanel";
 import { ParamsPanel } from "./components/ParamsPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
+import { Resizer } from "./components/Resizer";
 import { StatusBanner } from "./components/StatusBanner";
 import { StepDetail } from "./components/StepDetail";
 import { Tutorial } from "./components/Tutorial";
@@ -20,6 +21,14 @@ import { TOUR_SEEN_KEY, TUTORIAL_STEPS } from "./components/tutorialSteps";
 import { useUrlState } from "./hooks/useUrlState";
 import { usePlayback } from "./hooks/usePlayback";
 import { buildDerivationTree } from "./lib/derivation";
+import {
+  readLayout,
+  writeLayout,
+  SIDEBAR_MAX,
+  SIDEBAR_MIN,
+  STRIP_BOUNDS,
+} from "./lib/layoutStorage";
+import type { LayoutSizes, StripId } from "./lib/layoutStorage";
 import type { PersistedState } from "./lib/serialization";
 import { DEFAULT_PARAMS, useVisualizer } from "./state";
 
@@ -31,6 +40,9 @@ function App() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<GrammarSuggestion | null>(null);
+  const [layout, setLayout] = useState<LayoutSizes>(() => readLayout());
+  const stripRefs = useRef<Partial<Record<StripId, HTMLElement | null>>>({});
+  const [measured, setMeasured] = useState<Partial<Record<StripId, number>>>({});
   const pendingStepRef = useRef<number | null>(null);
   const pendingTimerRef = useRef<number | null>(null);
 
@@ -111,6 +123,66 @@ function App() {
   useEffect(() => {
     stop();
   }, [state.result, stop]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => writeLayout(layout), 300);
+    return () => window.clearTimeout(timer);
+  }, [layout]);
+
+  // Before a panel has been resized it takes whatever space it needs, so a drag
+  // has to start from its real height rather than a guess.
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      setMeasured((previous) => {
+        const next = { ...previous };
+        let changed = false;
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.strip as StripId | undefined;
+          if (!id) continue;
+          const box = entry.borderBoxSize?.[0]?.blockSize;
+          const height = Math.round(box ?? entry.contentRect.height);
+          if (height > 0 && next[id] !== height) {
+            next[id] = height;
+            changed = true;
+          }
+        }
+        return changed ? next : previous;
+      });
+    });
+    for (const element of Object.values(stripRefs.current)) {
+      if (element) observer.observe(element);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  const setStrip = useCallback((id: StripId, height: number) => {
+    setLayout((previous) => ({ ...previous, strips: { ...previous.strips, [id]: height } }));
+  }, []);
+
+  const stripProps = (id: StripId) => ({
+    "data-strip": id,
+    ref: (element: HTMLElement | null) => {
+      stripRefs.current[id] = element;
+    },
+    className: `strip ${id}-panel${layout.strips[id] !== undefined ? " is-resized" : ""}`,
+    style:
+      layout.strips[id] !== undefined
+        ? ({ "--strip-height": `${layout.strips[id]}px` } as React.CSSProperties)
+        : undefined,
+  });
+
+  const stripResizer = (id: StripId, label: string, fallback: number) => (
+    <Resizer
+      className="resizer-strip"
+      orientation="horizontal"
+      value={layout.strips[id] ?? measured[id] ?? fallback}
+      onChange={(height) => setStrip(id, height)}
+      min={STRIP_BOUNDS[id].min}
+      max={STRIP_BOUNDS[id].max}
+      label={label}
+    />
+  );
 
   const activeRule = activeStep
     ? { nonTerminal: activeStep.non_terminal, choice: activeStep.choice }
@@ -229,7 +301,14 @@ function App() {
         </div>
       </header>
       <EngineBanner />
-      <div className="dashboard">
+      <div
+        className="dashboard"
+        style={
+          layout.sidebarWidth !== null
+            ? ({ "--sidebar-width": `${layout.sidebarWidth}px` } as React.CSSProperties)
+            : undefined
+        }
+      >
         <aside className="sidebar grammar-panel">
           <GrammarPanel
             grammarText={state.grammarText}
@@ -254,8 +333,17 @@ function App() {
             }}
           />
         </aside>
-        <main className="main">
-          <section className="strip controls-panel">
+        <Resizer
+          className="resizer-sidebar"
+          orientation="vertical"
+          value={layout.sidebarWidth ?? 340}
+          onChange={(sidebarWidth) => setLayout((previous) => ({ ...previous, sidebarWidth }))}
+          min={SIDEBAR_MIN}
+          max={SIDEBAR_MAX}
+          label="Resize the grammar panel"
+        />
+        <main className={`main${Object.keys(layout.strips).length > 0 ? " is-resized" : ""}`}>
+          <section {...stripProps("controls")}>
             <Controls
               hasResult={state.result !== null}
               currentStep={currentStep}
@@ -288,7 +376,8 @@ function App() {
               onSpeedChange={setSpeed}
             />
           </section>
-          <section className="strip genome-panel">
+          {stripResizer("controls", "Resize the playback controls", 44)}
+          <section {...stripProps("genome")}>
             <GenomeEditor
               genome={state.result?.genome ?? state.genome}
               bitsPerCodon={state.params.bits_per_codon}
@@ -310,7 +399,8 @@ function App() {
               onGenomeLengthChange={setGenomeLength}
             />
           </section>
-          <section className="strip tree-panel">
+          {stripResizer("genome", "Resize the genome editor", 86)}
+          <section {...stripProps("tree")}>
             {state.result && state.result.status !== "complete" && (
               <StatusBanner status={state.result.status} params={state.params} />
             )}
@@ -322,10 +412,12 @@ function App() {
               </p>
             )}
           </section>
-          <section className="strip phenotype-panel">
+          {stripResizer("tree", "Resize the derivation tree", 420)}
+          <section {...stripProps("phenotype")}>
             <PhenotypeView phenotype={phenotype} status={state.result?.status ?? null} />
             <StepDetail step={activeStep} totalSteps={trace.length} />
           </section>
+          {stripResizer("phenotype", "Resize the phenotype and step detail", 100)}
           <section className="strip evolution-panel">
             <EvolutionPanel
               grammarText={state.grammarText}

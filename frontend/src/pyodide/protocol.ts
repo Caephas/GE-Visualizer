@@ -23,6 +23,14 @@ export interface TargetReachability {
   length: number;
 }
 
+export interface FitnessCheck {
+  valid: boolean;
+  error: string | null;
+  sample: string | null;
+  score: number | null;
+  call_error?: string | null;
+}
+
 export interface FitnessExplainRequest {
   config: EvolutionConfig;
   phenotype: string;
@@ -41,6 +49,7 @@ export type WorkerRequest =
   | { id: number; type: "map"; payload: MapRequest }
   | { id: number; type: "suggest"; grammarText: string; consumption: Consumption }
   | { id: number; type: "analyse"; grammarText: string; target: string }
+  | { id: number; type: "checkfitness"; source: string; sample: string }
   | { id: number; type: "evolve"; config: EvolutionConfig }
   | { id: number; type: "explain"; payload: FitnessExplainRequest };
 
@@ -51,6 +60,7 @@ export type WorkerResponse =
   | { id: number; type: "mapped"; value: MapResponse }
   | { id: number; type: "suggested"; value: GrammarSuggestion }
   | { id: number; type: "analysed"; value: TargetReachability }
+  | { id: number; type: "fitnesschecked"; value: FitnessCheck }
   | { id: number; type: "explained"; value: FitnessExplanation }
   | { id: number; type: "event"; value: EvolutionEvent }
   | { id: number; type: "done" }

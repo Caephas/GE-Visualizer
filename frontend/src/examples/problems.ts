@@ -1,7 +1,15 @@
+import groverFitnessSource from "./grover-fitness.py?raw";
+
 import { GRAMMAR_STRING } from "./grammars";
 
+/**
+ * Score a generated Grover program by how well it finds the marked state —
+ * a worked example for the custom-fitness editor.
+ */
+export const GROVER_FITNESS = groverFitnessSource;
+
 export interface ToyProblem {
-  id: "string_match" | "symbolic_regression";
+  id: ProblemId;
   name: string;
   description: string;
   defaultTarget: string;
@@ -11,6 +19,18 @@ export interface ToyProblem {
   recommendedGrammar: string;
   recommendedGrammarName: string;
 }
+
+export type ProblemId = "string_match" | "symbolic_regression" | "custom";
+
+/** Starter content for the custom-fitness editor: a working, converging example. */
+export const CUSTOM_FITNESS_TEMPLATE = `def fitness(phenotype: str) -> float:
+    """Lower is better; 0 means a perfect score."""
+    target = "abcabc"
+    cleaned = phenotype.replace(" ", "")
+    length_penalty = abs(len(cleaned) - len(target))
+    mismatches = sum(a != b for a, b in zip(cleaned, target))
+    return length_penalty + mismatches
+`;
 
 /** Arithmetic over `x` only, so the regression demo isn't tripped up by `y`. */
 export const GRAMMAR_REGRESSION = [
@@ -39,5 +59,16 @@ export const TOY_PROBLEMS: ToyProblem[] = [
     defaultCoeffs: [0, 1, 1],
     recommendedGrammar: GRAMMAR_REGRESSION,
     recommendedGrammarName: "Arithmetic (over x)",
+  },
+  {
+    id: "custom",
+    name: "Custom (Python)",
+    description:
+      "Write your own objective: define fitness(phenotype) returning a number, where lower is better.",
+    defaultTarget: "",
+    defaultSamples: [],
+    defaultCoeffs: [],
+    recommendedGrammar: "",
+    recommendedGrammarName: "",
   },
 ];

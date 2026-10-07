@@ -159,7 +159,7 @@ input[type="range"] {
 }
 
 .sidebar {
-  width: 340px;
+  width: var(--sidebar-width, 340px);
   flex-shrink: 0;
   border-right: 1px solid var(--line);
   background: var(--surface);
@@ -1533,6 +1533,201 @@ kbd {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--danger);
+}
+
+/* ---------- Custom fitness editor ---------- */
+
+.evo-fitness {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--page);
+}
+
+.evo-fitness-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.evo-fitness-head code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--surface-warm);
+  font-family: var(--font-mono);
+}
+
+.evo-fitness-reset,
+.evo-fitness-restart {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.evo-fitness-reset:hover,
+.evo-fitness-restart:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+.evo-fitness-code {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  resize: vertical;
+  tab-size: 4;
+}
+
+.evo-fitness-error,
+.evo-fitness-ok {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.evo-fitness-error {
+  color: var(--danger);
+}
+
+.evo-fitness-ok {
+  color: var(--ok);
+}
+
+.evo-fitness-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.evo-fitness-restart {
+  flex-shrink: 0;
+}
+
+/* ---------- Resizable panels ---------- */
+
+.resizer {
+  position: relative;
+  z-index: 4;
+  flex: 0 0 auto;
+  background: transparent;
+  touch-action: none;
+}
+
+.resizer::after {
+  content: "";
+  position: absolute;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.resizer-vertical {
+  width: 8px;
+  cursor: col-resize;
+}
+
+.resizer-vertical::after {
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+}
+
+.resizer-horizontal {
+  height: 8px;
+  cursor: row-resize;
+}
+
+.resizer-horizontal::after {
+  top: 3px;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.resizer.is-dragging::after {
+  opacity: 1;
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
+/* Once a panel is given a height it stops absorbing the leftover space. */
+.strip.is-resized {
+  flex: 0 0 auto;
+  height: var(--strip-height);
+  overflow: auto;
+}
+
+/* The tree stage manages its own overflow. */
+.tree-panel.is-resized {
+  overflow: hidden;
+  min-height: 120px;
+}
+
+@media (min-width: 1101px) {
+  /* Resized panels can exceed the viewport, so let the column scroll. */
+  .main.is-resized {
+    overflow-y: auto;
+  }
+}
+
+/*
+ * Whatever space is left over goes to the last panel, so shrinking a panel
+ * never leaves a blank gap at the bottom of the column.
+ */
+.main.is-resized > :last-child {
+  flex: 1 0 auto;
+}
+
+@media (max-width: 1100px) {
+  /* The dashboard stacks here, so there is no column to drag. */
+  .resizer-sidebar {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .resizer-vertical {
+    width: 14px;
+  }
+
+  .resizer-horizontal {
+    height: 14px;
+  }
+
+  .resizer-vertical::after {
+    left: 6px;
+  }
+
+  .resizer-horizontal::after {
+    top: 6px;
+  }
 }
 
 .evo-suggestion {

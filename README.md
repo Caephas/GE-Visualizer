@@ -25,6 +25,9 @@ the derivation tree, partial phenotype, active rule, and codon strip all update 
 - Live step-through of the genotype → phenotype mapping: synchronized highlights across the
   grammar rules, codon strip, derivation tree, and partial phenotype
 - Playback with adjustable speed, keyboard shortcuts (`space`, arrows, `Home`, `End`)
+- Resizable layout: drag the dividers to size the grammar panel and every panel in the main
+  column, plus the custom fitness editor — sizes are remembered and the dividers work with the
+  keyboard too
 - Responsive down to small phones: the panels stack, the page scrolls normally, and the tree
   supports pinch-to-zoom on touch screens
 - Binary and codon genome editing with lossless representation switching
@@ -37,6 +40,8 @@ the derivation tree, partial phenotype, active rule, and codon strip all update 
 - Evolution playground: string match and symbolic regression problems with per-generation
   fitness charts, worked examples that reach a perfect score, a "how was this scored?"
   breakdown, and one-click drill-down into any individual
+- Custom objectives: paste your own `def fitness(phenotype)` in Python — it runs in the browser,
+  with a live check as you type. A bundled Grover example shows it driving real evolution
 - Built-in grammar presets (arithmetic, boolean, strings, a 3-qubit Grover program generator),
   an interactive spotlight tour, and a Guide panel explaining every control and setting
 - Export the derivation: the tree as SVG or PNG, and the full step trace as text or CSV
@@ -194,7 +199,7 @@ make help           # list everything
 
 ```bash
 cd frontend
-npm test               # 128 tests: view logic, components, playback, tour, export, feedback, engine client
+npm test               # 134 tests: view logic, components, playback, tour, export, feedback, engine client
 npm run typecheck      # tsc
 npm run lint           # eslint
 npm run build          # tsc + vite build
@@ -204,6 +209,27 @@ npm run verify:engine  # the Python engine under real Pyodide, against the golde
 With a preview server running (`npm run preview`), `npm run check:responsive` loads the app at
 phone, tablet, and desktop widths and fails if anything overflows or forces mobile Chrome to zoom
 the page out. `npm run capture:media` regenerates the screenshots above the same way.
+
+### Custom fitness functions
+
+Choosing **Custom (Python)** in the playground lets you paste your own objective:
+
+```python
+def fitness(phenotype: str) -> float:
+    """Lower is better; 0 means a perfect score."""
+    return abs(len(phenotype.replace(" ", "")) - 4)
+```
+
+It runs in the same Pyodide runtime as the engine, so it needs the **standard library only** —
+numpy, Qiskit and pandas are not available. It is compiled once per run and called per individual;
+anything it raises on a single individual costs that individual the penalty score rather than
+aborting the run, and the first error is reported back. `(score, logs)` return values are accepted,
+so functions written for a notebook usually work with little change.
+
+The source is kept in `localStorage` and is deliberately **not** put in the shareable URL: a link
+carrying Python would otherwise run someone else's code in your browser. Because nothing can
+interrupt a running Python function, there is a **Restart engine** button — the way out of a
+fitness function that loops forever.
 
 The golden fixtures in `frontend/tests/fixtures/` were generated from the **unpatched** `grape-bds`
 package, and `verify:engine` replays them through the browser engine — so a change to

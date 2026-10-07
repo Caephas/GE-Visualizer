@@ -78,6 +78,7 @@ export type EvolutionEvent =
   | {
       type: "generation";
       gen: number;
+      fitness_error?: string | null;
       best_fitness: number;
       mean_fitness: number;
       worst_fitness: number;
@@ -85,12 +86,20 @@ export type EvolutionEvent =
       best: EvolvedIndividual;
       top: EvolvedIndividual[];
     }
-  | { type: "done"; generations: number; best_fitness: number; best: EvolvedIndividual }
+  | {
+      type: "done";
+      generations: number;
+      best_fitness: number;
+      best: EvolvedIndividual;
+      fitness_error?: string | null;
+    }
   | { type: "error"; message: string };
 
 export interface EvolutionConfig {
   grammar_text: string;
-  problem: "string_match" | "symbolic_regression";
+  problem: "string_match" | "symbolic_regression" | "custom";
+  /** Python source for `def fitness(phenotype) -> float`, when problem is "custom". */
+  fitness_source?: string;
   target: string;
   samples: number[];
   coeffs: number[];

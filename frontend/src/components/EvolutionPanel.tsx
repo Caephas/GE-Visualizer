@@ -1,8 +1,12 @@
 import { Fragment, useEffect, useState } from "react";
 
-import { analyseTarget, explainFitness, streamEvolution } from "../api";
-import type { TargetReachability } from "../api";
-import { TOY_PROBLEMS } from "../examples/problems";
+import { analyseTarget, checkFitness, explainFitness, restartEngine, streamEvolution } from "../api";
+import type { FitnessCheck, TargetReachability } from "../api";
+import { CUSTOM_FITNESS_TEMPLATE, TOY_PROBLEMS } from "../examples/problems";
+import type { ProblemId } from "../examples/problems";
+import { GRAMMAR_GROVER } from "../examples/grammars";
+import { GROVER_FITNESS } from "../examples/problems";
+import { readFitnessSource, writeFitnessSource } from "../lib/fitnessStorage";
 import type { EvolutionConfig, EvolutionEvent, EvolvedIndividual } from "../types";
 
 export interface EvolutionPanelProps {
@@ -21,6 +25,8 @@ const HEAVY_POPULATION = 400;
 const HEAVY_WORKLOAD = 15000;
 const MAX_POPULATION = 2000;
 const MAX_GENERATIONS = 500;
+const MAX_GENOME_INIT = 400;
+const FITNESS_CHECK_IDLE: FitnessCheck = { valid: true, error: null, sample: null, score: null };
 
 function clampField(raw: string, max: number): number {
   const value = Number(raw);
@@ -62,13 +68,17 @@ export function EvolutionPanel({
   onDrillDown,
   onUseGrammar,
 }: EvolutionPanelProps) {
-  const [problem, setProblem] = useState<"string_match" | "symbolic_regression">("string_match");
+  const [problem, setProblem] = useState<ProblemId>("string_match");
+  const [fitnessSource, setFitnessSource] = useState(() => readFitnessSource());
+  const [fitnessCheck, setFitnessCheck] = useState<FitnessCheck>(FITNESS_CHECK_IDLE);
   const [target, setTarget] = useState(TOY_PROBLEMS[0].defaultTarget);
   const [populationSize, setPopulationSize] = useState(100);
   const [generations, setGenerations] = useState(30);
   const [crossoverRate, setCrossoverRate] = useState(0.8);
   const [mutationRate, setMutationRate] = useState(0.1);
   const [seed, setSeed] = useState(42);
+  const [initMin, setInitMin] = useState(5);
+  const [initMax, setInitMax] = useState(20);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<GenerationEvent[]>([]);
@@ -88,6 +98,9 @@ export function EvolutionPanel({
   const configValid = populationSize >= 2 && generations >= 1;
   const recommended = selected.recommendedGrammar;
   const grammarMatches = grammarText.trim() === recommended.trim();
+  const showSuggestion = recommended.trim() !== "" && !grammarMatches;
+  const fitnessBlocked = problem === "custom" && !fitnessCheck.valid;
+  const fitnessError = latest?.fitness_error ?? done?.fitness_error ?? null;
 
   // Warn before a run that cannot possibly succeed.
   useEffect(() => {
@@ -111,9 +124,37 @@ export function EvolutionPanel({
     };
   }, [problem, target, grammarText, grammarValid]);
 
+  // Keep the user's function on this machine only — never in the shareable URL.
+  useEffect(() => {
+    if (problem === "custom") writeFitnessSource(fitnessSource);
+  }, [problem, fitnessSource]);
+
+  // Compile (and try) the function as they type, so errors surface early.
+  useEffect(() => {
+    if (problem !== "custom") {
+      setFitnessCheck(FITNESS_CHECK_IDLE);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void checkFitness(fitnessSource)
+        .then((result) => {
+          if (!cancelled) setFitnessCheck(result);
+        })
+        .catch(() => {
+          if (!cancelled) setFitnessCheck(FITNESS_CHECK_IDLE);
+        });
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [problem, fitnessSource]);
+
   const buildConfig = (): EvolutionConfig => ({
       grammar_text: grammarText,
       problem,
+      fitness_source: problem === "custom" ? fitnessSource : undefined,
       target: problem === "string_match" ? target : "",
       samples: selected.defaultSamples,
       coeffs: selected.defaultCoeffs,
@@ -125,8 +166,8 @@ export function EvolutionPanel({
       tournament_size: 3,
       codon_size: 400,
       max_depth: 40,
-      min_init_genome_length: 5,
-      max_init_genome_length: 20,
+      min_init_genome_length: Math.min(initMin, initMax),
+      max_init_genome_length: Math.max(initMin, initMax),
       max_genome_length: null,
       consumption: "eager",
       top_k: 20,
@@ -135,6 +176,10 @@ export function EvolutionPanel({
     });
 
   const run = async () => {
+    if (problem === "custom" && !fitnessCheck.valid) {
+      setError(fitnessCheck.error ?? "Fix the fitness function first.");
+      return;
+    }
     setRunning(true);
     setError(null);
     setEvents([]);
@@ -182,7 +227,7 @@ export function EvolutionPanel({
           type="button"
           className="button-primary button-evo"
           onClick={() => void run()}
-          disabled={running || !grammarValid || !configValid}
+          disabled={running || !grammarValid || !configValid || fitnessBlocked}
           title={
             !grammarValid
               ? "Fix grammar errors first"
@@ -198,7 +243,7 @@ export function EvolutionPanel({
         <div className="evo-config-row">
           <select
             value={problem}
-            onChange={(event) => setProblem(event.target.value as "string_match" | "symbolic_regression")}
+            onChange={(event) => setProblem(event.target.value as ProblemId)}
           >
             {TOY_PROBLEMS.map((item) => (
               <option key={item.id} value={item.id}>
@@ -210,7 +255,7 @@ export function EvolutionPanel({
             <input type="text" value={target} onChange={(event) => setTarget(event.target.value)} />
           )}
         </div>
-        {!grammarMatches && (
+        {showSuggestion && (
           <div className="evo-suggestion">
             <span>
               {selected.name} works best with the{" "}
@@ -219,6 +264,66 @@ export function EvolutionPanel({
             <button type="button" onClick={() => onUseGrammar(recommended)}>
               Use it
             </button>
+          </div>
+        )}
+        {problem === "custom" && (
+          <div className="evo-fitness">
+            <div className="evo-fitness-head">
+              <span>
+                Your objective — <code>def fitness(phenotype)</code>, lower is better
+              </span>
+              <button
+                type="button"
+                className="evo-fitness-reset"
+                onClick={() => setFitnessSource(CUSTOM_FITNESS_TEMPLATE)}
+              >
+                Reset to example
+              </button>
+              <button
+                type="button"
+                className="evo-fitness-reset"
+                title="Load the Grover grammar and an objective that scores how well the circuit finds |101>"
+                onClick={() => {
+                  setFitnessSource(GROVER_FITNESS);
+                  // This grammar needs a long genome before anything completes,
+                  // and more generations to find the amplification.
+                  setInitMin(25);
+                  setInitMax(45);
+                  setGenerations(60);
+                  onUseGrammar(GRAMMAR_GROVER);
+                }}
+              >
+                Grover example
+              </button>
+            </div>
+            <textarea
+              className="evo-fitness-code"
+              aria-label="Fitness function"
+              spellCheck={false}
+              rows={9}
+              value={fitnessSource}
+              onChange={(event) => setFitnessSource(event.target.value)}
+            />
+            {fitnessCheck.error ? (
+              <p className="evo-fitness-error" role="alert">
+                {fitnessCheck.error}
+              </p>
+            ) : fitnessCheck.call_error ? (
+              <p className="evo-fitness-error" role="alert">
+                On {JSON.stringify(fitnessCheck.sample)} it raised {fitnessCheck.call_error}
+              </p>
+            ) : fitnessCheck.score !== null ? (
+              <p className="evo-fitness-ok">
+                On {JSON.stringify(fitnessCheck.sample)} it returns {fitnessCheck.score}
+              </p>
+            ) : null}
+            <p className="evo-fitness-note">
+              Runs in your browser with the standard library only — numpy, Qiskit and pandas are not
+              available. Kept on this device; it is not put in the shareable link.
+              <button type="button" className="evo-fitness-restart" onClick={restartEngine}>
+                Restart engine
+              </button>
+            </p>
           </div>
         )}
         <div className="evo-config-grid">
@@ -254,6 +359,26 @@ export function EvolutionPanel({
             <span>P(mut)</span>
             <input type="number" min={0} max={1} step={0.05} value={mutationRate} onChange={(event) => setMutationRate(Number(event.target.value))} />
           </label>
+          <label className="evo-field">
+            <span>Init min</span>
+            <input
+              type="number"
+              min={1}
+              max={MAX_GENOME_INIT}
+              value={initMin}
+              onChange={(event) => setInitMin(clampField(event.target.value, MAX_GENOME_INIT))}
+            />
+          </label>
+          <label className="evo-field">
+            <span>Init max</span>
+            <input
+              type="number"
+              min={1}
+              max={MAX_GENOME_INIT}
+              value={initMax}
+              onChange={(event) => setInitMax(clampField(event.target.value, MAX_GENOME_INIT))}
+            />
+          </label>
         </div>
         {heavyLoad && (
           <div className="evo-warning" role="status">
@@ -281,6 +406,14 @@ export function EvolutionPanel({
       {error && (
         <div className="error-banner" role="alert">
           {error}
+        </div>
+      )}
+      {fitnessError && (
+        <div className="error-banner" role="status">
+          <span>
+            Your fitness function raised <strong>{fitnessError}</strong> — those individuals were
+            given the penalty score.
+          </span>
         </div>
       )}
       <div className="evo-results">

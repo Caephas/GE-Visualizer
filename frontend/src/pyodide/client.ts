@@ -6,6 +6,7 @@ import type {
   MapResponse,
 } from "../types";
 import type {
+  FitnessCheck,
   GrammarSuggestion,
   FitnessExplanation,
   FitnessExplainRequest,
@@ -20,6 +21,7 @@ export interface WorkerLike {
   postMessage(message: WorkerRequest): void;
   addEventListener(type: "message", listener: (event: MessageEvent<WorkerResponse>) => void): void;
   removeEventListener(type: "message", listener: (event: MessageEvent<WorkerResponse>) => void): void;
+  terminate?(): void;
 }
 
 export type EngineStatus = "loading" | "ready" | "error";
@@ -42,6 +44,11 @@ type Pending =
   | {
       kind: "analyse";
       resolve: (value: TargetReachability) => void;
+      reject: (error: Error) => void;
+    }
+  | {
+      kind: "checkfitness";
+      resolve: (value: FitnessCheck) => void;
       reject: (error: Error) => void;
     }
   | {
@@ -126,6 +133,32 @@ export class EngineClient {
       this.pending.set(id, { kind: "analyse", resolve, reject });
       this.worker!.postMessage({ id, type: "analyse", grammarText, target });
     });
+  }
+
+  async checkFitness(source: string, sample = "x + 1"): Promise<FitnessCheck> {
+    await this.ready();
+    const id = this.nextId++;
+    return new Promise<FitnessCheck>((resolve, reject) => {
+      this.pending.set(id, { kind: "checkfitness", resolve, reject });
+      this.worker!.postMessage({ id, type: "checkfitness", source, sample });
+    });
+  }
+
+  /**
+   * Kill the worker and start a fresh one. The escape hatch for a fitness
+   * function that loops forever — nothing else can interrupt running Python.
+   */
+  restart(): void {
+    for (const pending of this.pending.values()) {
+      pending.reject(new EngineError("The engine was restarted."));
+    }
+    this.pending.clear();
+    this.worker?.terminate?.();
+    this.worker = null;
+    this.readyPromise = null;
+    this.readyResolve = null;
+    this.readyReject = null;
+    this.setStatus("loading");
   }
 
   async streamEvolution(
@@ -216,6 +249,12 @@ export class EngineClient {
         const pending = this.pending.get(message.id);
         this.pending.delete(message.id);
         if (pending?.kind === "analyse") pending.resolve(message.value);
+        return;
+      }
+      case "fitnesschecked": {
+        const pending = this.pending.get(message.id);
+        this.pending.delete(message.id);
+        if (pending?.kind === "checkfitness") pending.resolve(message.value);
         return;
       }
       case "event": {

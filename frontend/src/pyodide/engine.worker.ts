@@ -108,6 +108,18 @@ async function handle(message: WorkerRequest): Promise<void> {
         scope.postMessage({ id: message.id, type: "analysed", value });
         return;
       }
+      case "checkfitness": {
+        const py = await ensureEngine();
+        const value = JSON.parse(
+          call(
+            py,
+            "check_fitness_json",
+            JSON.stringify({ source: message.source, sample: message.sample }),
+          ),
+        );
+        scope.postMessage({ id: message.id, type: "fitnesschecked", value });
+        return;
+      }
       case "evolve": {
         const py = await ensureEngine();
         const { run } = JSON.parse(call(py, "evolve_start_json", JSON.stringify(message.config)));
