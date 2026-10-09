@@ -29,7 +29,8 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         A BNF grammar describes every program you can build, like{" "}
         <code>&lt;expr&gt; ::= &lt;term&gt; | &lt;expr&gt; + &lt;term&gt;</code>. Pick a preset or
         paste your own — it is validated as you type, and the header chip turns{" "}
-        <strong>✓ Valid</strong> when it parses.
+        <strong>✓ Valid</strong> when it parses. If a derivation misbehaves,{" "}
+        <strong>Suggest working settings</strong> works out a genome and depth that complete it.
       </>
     ),
   },
@@ -88,12 +89,24 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     ),
   },
   {
+    target: ".evo-generations-toggle",
+    title: "See what the operators did",
+    body: (
+      <>
+        After a run, <strong>Generations</strong> opens a drawer where you can step back through it;
+        each offspring's genome is coloured by where every codon came from — from parent A, from
+        parent B, mutated, or carried over by elitism. Beyond string match and symbolic regression
+        you can pick <strong>Custom (Python)</strong> and write your own fitness function.
+      </>
+    ),
+  },
+  {
     target: ".guide-toggle",
     title: "That’s the whole loop",
     body: (
       <>
         Reopen this tour or read the full reference with the <strong>Guide</strong> button. Everything
-        you did here stayed on your machine.
+        you did here stayed on your machine, and any divider can be dragged to resize the panels.
       </>
     ),
   },

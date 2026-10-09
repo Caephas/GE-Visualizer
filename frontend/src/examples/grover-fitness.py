@@ -201,7 +201,18 @@ def _simulate(program):
 
 
 def fitness(phenotype: str) -> float:
-    """1 - P(measuring the marked state), so lower is better and 0 is perfect."""
+    """1 - P(measuring the marked state), so lower is better and 0 is perfect.
+
+    A genome that runs out of codons leaves a half-written call behind: the
+    literal parts of a production are already in the phenotype while its
+    non-terminals never expanded, so `qc.u(, , , )` can appear. That circuit
+    cannot find anything, so it scores 1.0 rather than raising — most of a GE
+    population is incomplete, and raising on each of them would flood the run
+    with errors instead of ranking them.
+    """
     program = "\n".join(re.findall(r'"([^"]*)"', phenotype)).replace("\\n", "\n")
-    state = _simulate(program)
+    try:
+        state = _simulate(program)
+    except Exception:  # noqa: BLE001 - anything unparseable is simply the worst score
+        return 1.0
     return 1.0 - abs(state[int(MARKED, 2)]) ** 2

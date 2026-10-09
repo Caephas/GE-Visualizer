@@ -74,6 +74,67 @@ export interface EvolvedIndividual {
   invalid: boolean;
 }
 
+/**
+ * Where each codon of an offspring came from. 0 and 1 are the two recorded
+ * parents, 2 means the codon was rewritten by mutation, 3 means the individual
+ * was copied through unchanged by elitism.
+ */
+export type CodonOrigin = 0 | 1 | 2 | 3;
+
+export interface CodonChange {
+  index: number;
+  from: number;
+  to: number;
+}
+
+/** A tournament: the population indices that competed, and the winner. */
+export interface SelectionRecord {
+  aspirants: number[];
+  winner: number;
+}
+
+export interface LineageParent {
+  genome: number[];
+  fitness: number;
+  selection: SelectionRecord;
+}
+
+/**
+ * What the genetic operators did to one offspring. `origins` is index-aligned
+ * with `genome`, so a view can colour every codon without any inference.
+ */
+export interface LineageRecord {
+  gen: number;
+  slot: number;
+  operation: "elite" | "clone" | "crossover" | "mutation" | "crossover+mutation";
+  genome: number[];
+  origins: CodonOrigin[];
+  changes: CodonChange[];
+  /**
+   * `[this child's split, the partner's split]`, so
+   * `parents[0].genome[:split] + parents[1].genome[partnerSplit:]` is the child
+   * before mutation.
+   */
+  crossover_points: [number, number] | null;
+  parents: LineageParent[];
+  fitness: number;
+  parent_fitness: number[];
+}
+
+/**
+ * Per-generation summary over the whole population (not just traced
+ * individuals). An offspring counts as better when its fitness beats every
+ * parent it inherited from; offspring that crossed over *and* mutated are
+ * counted under both operators.
+ */
+export interface LineageStats {
+  gen: number;
+  crossover: { better: number; worse: number };
+  mutation: { better: number; worse: number };
+  elite: number;
+  traced: number;
+}
+
 export type EvolutionEvent =
   | {
       type: "generation";
@@ -85,6 +146,8 @@ export type EvolutionEvent =
       valid_count: number;
       best: EvolvedIndividual;
       top: EvolvedIndividual[];
+      lineage?: LineageRecord[];
+      lineage_stats?: LineageStats;
     }
   | {
       type: "done";

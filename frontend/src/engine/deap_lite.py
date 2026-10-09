@@ -14,6 +14,7 @@ See frontend/src/engine/THIRD_PARTY_NOTICES.md for the full notice.
 
 from __future__ import annotations
 
+import random
 import sys
 from collections.abc import Sequence
 from copy import deepcopy
@@ -204,16 +205,24 @@ creator.create = create
 
 
 def selRandom(individuals, k):
-    import random
-
     return [random.choice(individuals) for i in range(k)]
 
 
-def selTournament(individuals, k, tournsize, fit_attr="fitness"):
+def selTournament(individuals, k, tournsize, fit_attr="fitness", trace=None):
+    """Tournament selection.
+
+    [GEV] Instrumented: pass a list as `trace` to record the population indices
+    that competed and the winner of each tournament. Selecting by index keeps
+    the same random draws `random.choice` would make, so a seeded run is
+    unchanged whether or not tracing is on.
+    """
     chosen = []
     for _ in range(k):
-        aspirants = selRandom(individuals, tournsize)
-        chosen.append(max(aspirants, key=attrgetter(fit_attr)))
+        indices = [random.randrange(len(individuals)) for _ in range(tournsize)]
+        best = max(indices, key=lambda index: getattr(individuals[index], fit_attr))
+        chosen.append(individuals[best])
+        if trace is not None:
+            trace.append({"aspirants": indices, "winner": best})
     return chosen
 
 

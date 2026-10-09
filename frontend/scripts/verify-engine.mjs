@@ -310,11 +310,22 @@ const uniformScore = call(
     sample: asPhenotype(["qc.h(0)", "qc.h(1)", "qc.h(2)"]),
   }),
 ).score;
-if (Math.abs(idealScore - 0.21875) < 0.001 && Math.abs(uniformScore - 0.875) < 0.001) {
+// A genome that runs out of codons leaves a call with no real arguments, e.g.
+// `qc.u(, , , )`. That must score as the worst circuit, not raise.
+const truncated = call(
+  "check_fitness_json",
+  JSON.stringify({ source: groverFitnessSource, sample: ' "qc.u(" "," "," "," ")\\n" ' }),
+);
+if (
+  Math.abs(idealScore - 0.21875) < 0.001 &&
+  Math.abs(uniformScore - 0.875) < 0.001 &&
+  truncated.call_error == null &&
+  Math.abs(truncated.score - 1) < 0.001
+) {
   console.log(`OK   Grover objective (one ideal iteration ${idealScore.toFixed(4)}, uniform ${uniformScore.toFixed(4)})`);
 } else {
   failures += 1;
-  console.log("FAIL Grover objective", { idealScore, uniformScore });
+  console.log("FAIL Grover objective", { idealScore, uniformScore, truncated });
 }
 
 // 2d. Fitness explanations (the "why this score?" breakdown)
@@ -383,6 +394,84 @@ if (events > 0 && done) {
 } else {
   failures += 1;
   console.log("FAIL evolution produced no done event");
+}
+
+// 4. Lineage: every traced offspring must rebuild exactly from its own record,
+//    so the Generation view cannot show something that did not happen.
+const lineageConfig = {
+  ...config,
+  population_size: 40,
+  generations: 12,
+  p_mutation: 0.25,
+  top_k: 10,
+  seed: 42,
+  early_stop: false,
+};
+const { run: lineageRun } = call("evolve_start_json", JSON.stringify(lineageConfig));
+let lineageEvents = 0;
+let traced = 0;
+let largest = 0;
+const operations = {};
+const lineageProblems = [];
+for (;;) {
+  const event = call("evolve_next_json", JSON.stringify(lineageRun));
+  if (event === null) break;
+  if (event.type !== "generation") continue;
+  lineageEvents += 1;
+  largest = Math.max(largest, JSON.stringify(event).length);
+  if (event.lineage_stats?.traced !== event.lineage?.length) {
+    lineageProblems.push(`gen ${event.gen}: traced count disagrees`);
+  }
+  for (const record of event.lineage ?? []) {
+    traced += 1;
+    operations[record.operation] = (operations[record.operation] ?? 0) + 1;
+    if (record.origins.length !== record.genome.length) {
+      lineageProblems.push(`gen ${event.gen}: origins do not align with the genome`);
+    }
+    if (record.operation === "elite") {
+      if (record.parents.length || record.crossover_points || record.origins.some((o) => o !== 3)) {
+        lineageProblems.push(`gen ${event.gen}: elite record is not pristine`);
+      }
+      continue;
+    }
+    if (!record.parents.length) {
+      lineageProblems.push(`gen ${event.gen}: non-elite record has no parents`);
+      continue;
+    }
+    const rebuilt = record.crossover_points
+      ? [
+          ...record.parents[0].genome.slice(0, record.crossover_points[0]),
+          ...record.parents[1].genome.slice(record.crossover_points[1]),
+        ]
+      : [...record.parents[0].genome];
+    for (const change of record.changes) rebuilt[change.index] = change.to;
+    if (JSON.stringify(rebuilt) !== JSON.stringify(record.genome)) {
+      lineageProblems.push(`gen ${event.gen}: offspring does not rebuild from its record`);
+    }
+    if (!record.parents[0].selection?.aspirants?.length) {
+      lineageProblems.push(`gen ${event.gen}: missing tournament record`);
+    }
+  }
+}
+
+const sawCrossover = Object.keys(operations).some((op) => op.includes("crossover"));
+const sawMutation = Object.keys(operations).some((op) => op.includes("mutation"));
+const sawElite = (operations.elite ?? 0) > 0;
+if (
+  lineageProblems.length === 0 &&
+  lineageEvents > 0 &&
+  traced > 0 &&
+  sawCrossover &&
+  sawMutation &&
+  sawElite &&
+  largest < 64_000
+) {
+  console.log(
+    `OK   lineage (${traced} traced records, ${Object.keys(operations).join("/")}, largest event ${(largest / 1024).toFixed(1)} KB)`,
+  );
+} else {
+  failures += 1;
+  console.log("FAIL lineage", lineageProblems.slice(0, 3), { lineageEvents, traced, operations, largest });
 }
 
 console.log(failures === 0 ? "\nengine OK" : `\n${failures} FAILURE(S)`);

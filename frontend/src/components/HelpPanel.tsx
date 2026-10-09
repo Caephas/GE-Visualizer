@@ -60,6 +60,11 @@ export function HelpPanel({ open, onClose, onStartTour, onSendFeedback }: HelpPa
             <li>Wait for the header chip to turn green (✓ Valid). Invalid grammars are rejected before mapping.</li>
             <li>Click <strong>Apply grammar &amp; map</strong> — the sidebar shows the parsed rules.</li>
             <li>Step through the derivation tree with the controls and watch codons get consumed.</li>
+            <li>
+              If nothing maps, click <strong>Suggest working settings</strong>: it works out a genome
+              and depth that complete your grammar, and says how many codons each consumption mode
+              needs.
+            </li>
           </ol>
         </section>
 
@@ -72,6 +77,7 @@ export function HelpPanel({ open, onClose, onStartTour, onSendFeedback }: HelpPa
             <li>Drag the tree to pan, scroll to zoom, use <span className="help-mono">+ − ⊞</span> to zoom and fit</li>
             <li>Hover any tree node to see its step, codon, and choice</li>
             <li><span className="help-mono">⤓</span> in the tree toolbar exports the tree as SVG or PNG, or the derivation as text / CSV</li>
+            <li>Drag any divider to resize a panel — the grammar sidebar, the tree, or any panel in the middle column</li>
           </ul>
         </section>
 
@@ -108,9 +114,25 @@ export function HelpPanel({ open, onClose, onStartTour, onSendFeedback }: HelpPa
             then step through exactly why that program looks the way it does.
           </p>
           <p className="help-paragraph">
+            <strong>Generations</strong> opens a drawer where you can step back through the run and see
+            what the operators actually did. Each offspring's genome is coloured by where every codon
+            came from — <em>from parent A</em>, <em>from parent B</em>, <em>mutated</em>, or
+            <em>carried over</em> by elitism — with the mutations spelled out and the fitness of child
+            versus parents. The summary above the list counts how often crossover and mutation
+            improved on their parents in that generation.
+          </p>
+          <p className="help-paragraph">
+            Three problems are built in: string match, symbolic regression, and
+            <strong>Custom (Python)</strong>, where you write your own{" "}
+            <span className="help-mono">def fitness(phenotype)</span>. It runs in your browser with the
+            standard library only, and there is a bundled Grover example to start from.
+          </p>
+          <p className="help-paragraph">
             Pick a problem and the panel offers a matching grammar if yours can't express it — one
             click and you're ready to run. Click the fitness number on any row to see exactly how
-            that score was calculated.
+            that score was calculated. If the target is unreachable it says so before you run: a
+            warning names any character the grammar cannot produce, or reports that no derivation
+            produces that string.
           </p>
           <p className="help-paragraph">
             The whole run happens in your browser, so keep the population modest — around 300 or fewer.

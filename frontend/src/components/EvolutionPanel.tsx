@@ -1,12 +1,14 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import { analyseTarget, checkFitness, explainFitness, restartEngine, streamEvolution } from "../api";
 import type { FitnessCheck, TargetReachability } from "../api";
+import { GenerationView } from "./GenerationView";
 import { CUSTOM_FITNESS_TEMPLATE, TOY_PROBLEMS } from "../examples/problems";
 import type { ProblemId } from "../examples/problems";
 import { GRAMMAR_GROVER } from "../examples/grammars";
 import { GROVER_FITNESS } from "../examples/problems";
-import { readFitnessSource, writeFitnessSource } from "../lib/fitnessStorage";
+import { readFitness, writeFitnessSource } from "../lib/fitnessStorage";
+import type { ExampleId } from "../lib/fitnessStorage";
 import type { EvolutionConfig, EvolutionEvent, EvolvedIndividual } from "../types";
 
 export interface EvolutionPanelProps {
@@ -69,7 +71,11 @@ export function EvolutionPanel({
   onUseGrammar,
 }: EvolutionPanelProps) {
   const [problem, setProblem] = useState<ProblemId>("string_match");
-  const [fitnessSource, setFitnessSource] = useState(() => readFitnessSource());
+  const initialFitness = useRef(readFitness());
+  const [fitnessSource, setFitnessSource] = useState(() => initialFitness.current.source);
+  // Tracks whether the current source is an unedited bundled example, so a
+  // later edit to that example reaches the visitor instead of a stale copy.
+  const exampleRef = useRef<ExampleId | null>(initialFitness.current.example);
   const [fitnessCheck, setFitnessCheck] = useState<FitnessCheck>(FITNESS_CHECK_IDLE);
   const [target, setTarget] = useState(TOY_PROBLEMS[0].defaultTarget);
   const [populationSize, setPopulationSize] = useState(100);
@@ -90,6 +96,9 @@ export function EvolutionPanel({
     error?: string;
   } | null>(null);
   const [reachability, setReachability] = useState<TargetReachability | null>(null);
+  // null means "follow the newest generation as it streams in".
+  const [selectedGen, setSelectedGen] = useState<number | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
 
   const selected = TOY_PROBLEMS.find((item) => item.id === problem) ?? TOY_PROBLEMS[0];
   const latest = events[events.length - 1] ?? null;
@@ -126,7 +135,7 @@ export function EvolutionPanel({
 
   // Keep the user's function on this machine only — never in the shareable URL.
   useEffect(() => {
-    if (problem === "custom") writeFitnessSource(fitnessSource);
+    if (problem === "custom") writeFitnessSource(fitnessSource, exampleRef.current);
   }, [problem, fitnessSource]);
 
   // Compile (and try) the function as they type, so errors surface early.
@@ -185,6 +194,7 @@ export function EvolutionPanel({
     setEvents([]);
     setDone(null);
     setExplain(null);
+    setSelectedGen(null);
     try {
       await streamEvolution(buildConfig(), (event) => {
         if (event.type === "generation") setEvents((previous) => [...previous, event]);
@@ -199,6 +209,25 @@ export function EvolutionPanel({
   };
 
   const drillDown = (individual: EvolvedIndividual) => onDrillDown(individual.genome);
+
+  const genIndex =
+    events.length === 0
+      ? -1
+      : selectedGen === null
+        ? events.length - 1
+        : Math.min(selectedGen, events.length - 1);
+  const activeGen = genIndex >= 0 ? events[genIndex] : null;
+
+  const closeGenerations = useCallback(() => setGenOpen(false), []);
+
+  useEffect(() => {
+    if (!genOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeGenerations();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [genOpen, closeGenerations]);
 
   const toggleExplain = async (key: string, phenotype: string) => {
     if (explain?.key === key) {
@@ -223,6 +252,20 @@ export function EvolutionPanel({
     <div className="evolution-panel-body">
       <div className="evo-header">
         <span className="evo-title">Evolution Playground</span>
+        <div className="evo-header-actions">
+          <button
+            type="button"
+            className="evo-generations-toggle"
+            onClick={() => setGenOpen(true)}
+            disabled={events.length === 0}
+            title={
+              events.length === 0
+                ? "Run the evolution first"
+                : "Step back through the run and see what each operator did"
+            }
+          >
+            Generations
+          </button>
         <button
           type="button"
           className="button-primary button-evo"
@@ -238,6 +281,7 @@ export function EvolutionPanel({
         >
           {running ? "Running…" : "Run"}
         </button>
+        </div>
       </div>
       <div className="evo-controls">
         <div className="evo-config-row">
@@ -275,7 +319,10 @@ export function EvolutionPanel({
               <button
                 type="button"
                 className="evo-fitness-reset"
-                onClick={() => setFitnessSource(CUSTOM_FITNESS_TEMPLATE)}
+                onClick={() => {
+                  exampleRef.current = "template";
+                  setFitnessSource(CUSTOM_FITNESS_TEMPLATE);
+                }}
               >
                 Reset to example
               </button>
@@ -284,6 +331,7 @@ export function EvolutionPanel({
                 className="evo-fitness-reset"
                 title="Load the Grover grammar and an objective that scores how well the circuit finds |101>"
                 onClick={() => {
+                  exampleRef.current = "grover";
                   setFitnessSource(GROVER_FITNESS);
                   // This grammar needs a long genome before anything completes,
                   // and more generations to find the amplification.
@@ -302,7 +350,10 @@ export function EvolutionPanel({
               spellCheck={false}
               rows={9}
               value={fitnessSource}
-              onChange={(event) => setFitnessSource(event.target.value)}
+              onChange={(event) => {
+                exampleRef.current = null;
+                setFitnessSource(event.target.value);
+              }}
             />
             {fitnessCheck.error ? (
               <p className="evo-fitness-error" role="alert">
@@ -489,6 +540,62 @@ export function EvolutionPanel({
           </div>
         )}
       </div>
+      {genOpen && activeGen && (
+        <div className="help-overlay" role="dialog" aria-modal="true" aria-label="Generation view">
+          <div className="help-drawer gen-drawer">
+            <header className="help-header">
+              <span className="help-title">How generation {activeGen.gen} was built</span>
+              <button
+                type="button"
+                className="help-close"
+                onClick={closeGenerations}
+                aria-label="Close generation view"
+              >
+                ×
+              </button>
+            </header>
+            <div className="evo-gen-bar">
+              <button
+                type="button"
+                onClick={() => setSelectedGen(Math.max(0, genIndex - 1))}
+                disabled={genIndex <= 0}
+                aria-label="Previous generation"
+              >
+                ‹
+              </button>
+              <input
+                type="range"
+                min={1}
+                max={events.length}
+                value={genIndex + 1}
+                onChange={(event) => setSelectedGen(Number(event.target.value) - 1)}
+                aria-label="Generation"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedGen(Math.min(events.length - 1, genIndex + 1))}
+                disabled={genIndex >= events.length - 1}
+                aria-label="Next generation"
+              >
+                ›
+              </button>
+              <span className="evo-gen-count">
+                {activeGen.gen} / {events.length}
+              </span>
+              {selectedGen !== null && (
+                <button type="button" className="evo-gen-latest" onClick={() => setSelectedGen(null)}>
+                  Latest
+                </button>
+              )}
+            </div>
+            <GenerationView
+              lineage={activeGen.lineage ?? null}
+              stats={activeGen.lineage_stats ?? null}
+              onDrillDown={onDrillDown}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

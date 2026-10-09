@@ -232,4 +232,22 @@ describe("EvolutionPanel", () => {
     expect(screen.getByLabelText("Init max")).toHaveValue(45);
     expect(screen.getByLabelText("Gen")).toHaveValue(60);
   });
+
+  it("opens the generation view in a drawer after a run", async () => {
+    mockStream();
+    renderPanel();
+    expect(screen.getByRole("button", { name: "Generations" })).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Run" }));
+    });
+
+    const open = screen.getByRole("button", { name: "Generations" });
+    expect(open).toBeEnabled();
+    fireEvent.click(open);
+    expect(screen.getByRole("dialog", { name: "Generation view" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Close generation view"));
+    expect(screen.queryByRole("dialog", { name: "Generation view" })).not.toBeInTheDocument();
+  });
 });

@@ -653,9 +653,12 @@ def sensible_initialisation(ind_class, pop_size, bnf_grammar, min_init_depth,
             raise ValueError("Unkonwn genome representation")
 
 def crossover_onepoint(parent0, parent1, bnf_grammar, max_depth, codon_consumption,
-                       genome_representation='list', max_genome_length=None):
+                       genome_representation='list', max_genome_length=None, trace=None):
     """
 
+    [GEV] Instrumented: pass a list as `trace` to record the split points that
+    were actually accepted. The loop below retries until both children map
+    within `max_depth`, so only the final points describe the returned children.
     """
     if parent0.invalid: #used_codons = 0
         possible_crossover_codons0 = len(parent0.genome)
@@ -694,6 +697,8 @@ def crossover_onepoint(parent0, parent1, bnf_grammar, max_depth, codon_consumpti
             new_ind1.invalid = True
 
     del new_ind0.fitness.values, new_ind1.fitness.values
+    if trace is not None:
+        trace.append((point0, point1))
     return new_ind0, new_ind1
 
 def mutation_int_flip_per_codon(ind, mut_probability, codon_size, bnf_grammar, max_depth,

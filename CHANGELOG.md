@@ -5,6 +5,24 @@ Notable changes to the GE Visualizer. This project follows
 each release, and the mapping contract in `frontend/src/types.ts` is the piece
 that would justify a major bump.
 
+## Unreleased
+
+**Operator tracing.** The evolution no longer reports only fitness: it records what the genetic
+operators did, per generation.
+
+- The engine traces each offspring's lineage — which parents it came from, the crossover split
+  points that were accepted, the codon positions mutation rewrote (with their before and after
+  values), which individuals elitism carried over, and the fitness of child versus parents.
+- The playground gains a **Generation view** with a slider: step back through the run, see each
+  offspring's genome coloured by origin (parent A / parent B / mutated / carried over), and open
+  any individual in the derivation tree.
+- A per-generation summary counts how often crossover and mutation improved on their parents,
+  which makes the "most operator applications are harmful once the population converges" pattern
+  visible.
+- Every traced offspring can be rebuilt exactly from its own record, and tracing is inert: a
+  seeded run is identical whether or not the trace is collected. Both are asserted in
+  `npm run verify:engine`.
+
 ## 1.1.0 — browser-native release
 
 The mapping and the evolution now run entirely in the browser, with no server.

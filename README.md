@@ -29,7 +29,8 @@ the derivation tree, partial phenotype, active rule, and codon strip all update 
   column, plus the custom fitness editor — sizes are remembered and the dividers work with the
   keyboard too
 - Responsive down to small phones: the panels stack, the page scrolls normally, and the tree
-  supports pinch-to-zoom on touch screens
+  supports pinch-to-zoom on touch screens — with a dismissible nudge towards a larger screen,
+  since the tree and the generation view need room
 - Binary and codon genome editing with lossless representation switching
 - "Suggest working settings": works out, from the grammar alone, a genome and depth that
   complete it — and reports what each consumption mode needs
@@ -40,6 +41,9 @@ the derivation tree, partial phenotype, active rule, and codon strip all update 
 - Evolution playground: string match and symbolic regression problems with per-generation
   fitness charts, worked examples that reach a perfect score, a "how was this scored?"
   breakdown, and one-click drill-down into any individual
+- Generation view: step back through the run and see what the operators actually did — each
+  offspring's genome coloured by where every codon came from, the mutations spelled out, and a
+  per-generation count of how often crossover and mutation helped
 - Custom objectives: paste your own `def fitness(phenotype)` in Python — it runs in the browser,
   with a live check as you type. A bundled Grover example shows it driving real evolution
 - Built-in grammar presets (arithmetic, boolean, strings, a 3-qubit Grover program generator),

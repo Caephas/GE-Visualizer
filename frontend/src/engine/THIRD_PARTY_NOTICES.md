@@ -27,6 +27,10 @@ An instrumented copy of GRAPE's `grape.py`.
    an unbounded loop).
 5. Dead comments and commented-out code were removed, and an internal
    tuple-unpacking bug in `reMap` was fixed.
+6. `crossover_onepoint` takes an optional `trace` list and appends the split
+   points that were accepted, so the visualiser can show which genes each child
+   inherited. Only the accepted attempt is recorded, because the function
+   retries until both children map within `max_depth`.
 
 The mapping algorithm itself is unchanged, and
 `frontend/scripts/verify-engine.mjs` checks it against golden fixtures produced
@@ -47,6 +51,10 @@ A trimmed subset of DEAP 1.4.4.
 evolution loop can use DEAP's operators without numpy, scipy or moocore in the
 browser. The optional numpy support and the `copyreg` pickling hooks were
 dropped, and the metaclass registry was replaced by a small namespace object.
+`selTournament` also takes an optional `trace` list, recording the population
+indices that competed and the winner of each tournament; it selects by index
+rather than by object, which draws the same random numbers as DEAP's
+`random.choice` and leaves a seeded run unchanged.
 
 `deap_lite.py` remains available under the LGPL, as the LGPL requires for a
 modified copy of the library. It is used here as a library linked into this

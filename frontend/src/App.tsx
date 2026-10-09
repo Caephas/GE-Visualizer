@@ -11,6 +11,7 @@ import { GenomeEditor } from "./components/GenomeEditor";
 import { GrammarPanel } from "./components/GrammarPanel";
 import { GrammarLibrary } from "./components/GrammarLibrary";
 import { HelpPanel } from "./components/HelpPanel";
+import { MobileNotice } from "./components/MobileNotice";
 import { ParamsPanel } from "./components/ParamsPanel";
 import { PhenotypeView } from "./components/PhenotypeView";
 import { Resizer } from "./components/Resizer";
@@ -301,6 +302,7 @@ function App() {
         </div>
       </header>
       <EngineBanner />
+      <MobileNotice />
       <div
         className="dashboard"
         style={
@@ -425,6 +427,9 @@ function App() {
               onUseGrammar={applyGrammar}
               onDrillDown={(genome) => {
                 dispatch({ type: "SET_GENOME", genome });
+                // Show the finished derivation rather than the bare root, so the
+                // student lands on a fully expanded tree they can step back through.
+                pendingStepRef.current = Number.MAX_SAFE_INTEGER;
                 void map({ genome });
               }}
             />

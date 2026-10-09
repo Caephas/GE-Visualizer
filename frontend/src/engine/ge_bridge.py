@@ -342,6 +342,11 @@ def _individual_payload(individual) -> dict:
     }
 
 
+def _origins(genome: list, split: int) -> list:
+    """0 for codons inherited from the first parent, 1 for the second."""
+    return [0 if index < split else 1 for index in range(len(genome))]
+
+
 def evolution_events(config: dict):
     """Run a GRAPE/DEAP GA, yielding a generation event per generation and a final done event."""
     _ensure_creator()
@@ -386,10 +391,21 @@ def evolution_events(config: dict):
     for generation in range(1, generations + 1):
         elite = sorted(population, key=lambda ind: ind.fitness.values[0])[:elite_size]
 
-        offspring = toolbox.select(population, len(population))
+        selection: list = []
+        offspring = toolbox.select(population, len(population), trace=selection)
         offspring = [toolbox.clone(ind) for ind in offspring]
+
+        # `mate` and `mutate` rewrite the individual objects in place, so the
+        # state each offspring started from has to be captured first.
+        before = [
+            {"genome": list(ind.genome), "fitness": float(ind.fitness.values[0])}
+            for ind in offspring
+        ]
+
+        crossed: dict = {}
         for index in range(1, len(offspring), 2):
             if random.random() < p_crossover:
+                points: list = []
                 offspring[index - 1], offspring[index] = toolbox.mate(
                     offspring[index - 1],
                     offspring[index],
@@ -398,8 +414,18 @@ def evolution_events(config: dict):
                     consumption,
                     "list",
                     max_genome_length,
+                    trace=points,
                 )
+                if points:
+                    # The loop inside crossover retries until both children map
+                    # within max_depth, so only the accepted points are recorded.
+                    split0, split1 = points[-1]
+                    crossed[index - 1] = {"split": split0, "partner": index, "points": [split0, split1]}
+                    crossed[index] = {"split": split1, "partner": index - 1, "points": [split1, split0]}
+
+        changes_by_slot: dict = {}
         for index in range(len(offspring)):
+            genome_before = list(offspring[index].genome)
             (offspring[index],) = toolbox.mutate(
                 offspring[index],
                 p_mutation,
@@ -409,19 +435,121 @@ def evolution_events(config: dict):
                 consumption,
                 max_genome_length,
             )
+            genome_after = offspring[index].genome
+            changes = [
+                {"index": position, "from": genome_before[position], "to": genome_after[position]}
+                for position in range(min(len(genome_before), len(genome_after)))
+                if genome_before[position] != genome_after[position]
+            ]
+            if changes:
+                changes_by_slot[index] = changes
+
         for individual in offspring:
             individual.fitness.values = (fitness_fn(individual.phenotype),)
 
+        records = []
+        for slot in range(len(offspring)):
+            child = offspring[slot]
+            link = crossed.get(slot)
+            changes = changes_by_slot.get(slot, [])
+            parent_slots = [slot] if link is None else [slot, link["partner"]]
+            origins = [0] * len(child.genome) if link is None else _origins(child.genome, link["split"])
+            for change in changes:
+                if change["index"] < len(origins):
+                    origins[change["index"]] = 2
+            if link is not None and changes:
+                operation = "crossover+mutation"
+            elif link is not None:
+                operation = "crossover"
+            elif changes:
+                operation = "mutation"
+            else:
+                operation = "clone"
+            records.append(
+                {
+                    "gen": generation,
+                    "slot": slot,
+                    "operation": operation,
+                    "genome": list(child.genome),
+                    "origins": origins,
+                    "changes": changes,
+                    "crossover_points": link["points"] if link is not None else None,
+                    "parents": [
+                        {
+                            "genome": before[parent_slot]["genome"],
+                            "fitness": before[parent_slot]["fitness"],
+                            "selection": selection[parent_slot]
+                            if parent_slot < len(selection)
+                            else {"aspirants": [], "winner": parent_slot},
+                        }
+                        for parent_slot in parent_slots
+                    ],
+                    "fitness": float(child.fitness.values[0]),
+                    "parent_fitness": [before[parent_slot]["fitness"] for parent_slot in parent_slots],
+                }
+            )
+
+        for offset, individual in enumerate(elite):
+            records.append(
+                {
+                    "gen": generation,
+                    "slot": len(offspring) + offset,
+                    "operation": "elite",
+                    "genome": list(individual.genome),
+                    "origins": [3] * len(individual.genome),
+                    "changes": [],
+                    "crossover_points": None,
+                    "parents": [],
+                    "fitness": float(individual.fitness.values[0]),
+                    "parent_fitness": [],
+                }
+            )
+
         population = offspring[: len(population) - elite_size] + elite
 
-        best = min(population, key=lambda ind: ind.fitness.values[0])
+        fits = [ind.fitness.values[0] for ind in population]
+        order = sorted(range(len(population)), key=lambda index: population[index].fitness.values[0])
+        best = population[order[0]]
         if best_overall is None or best.fitness.values[0] < best_overall.fitness.values[0]:
             best_overall = best
-        fits = [ind.fitness.values[0] for ind in population]
-        top = sorted(population, key=lambda ind: ind.fitness.values[0])[:top_k]
+        top_indices = order[:top_k]
+        top = [population[index] for index in top_indices]
+
+        # Elites are tied with their own clones on fitness and sort last, so they
+        # would never make the top-k on their own. Carry them through explicitly:
+        # "this individual was copied unchanged" is the point of elitism.
+        traced_indices = list(top_indices)
+        for offset in range(len(elite)):
+            index = len(offspring) + offset
+            if index not in traced_indices:
+                traced_indices.append(index)
+
+        # Summary over the whole population, not just the traced individuals.
+        lineage_stats = {
+            "gen": generation,
+            "crossover": {"better": 0, "worse": 0},
+            "mutation": {"better": 0, "worse": 0},
+            "elite": len(elite),
+            "traced": len(traced_indices),
+        }
+        for slot in range(len(offspring)):
+            record = records[slot]
+            if not record["parent_fitness"]:
+                continue
+            best_parent = min(record["parent_fitness"])
+            if record["fitness"] == best_parent:
+                continue
+            bucket = "better" if record["fitness"] < best_parent else "worse"
+            if record["crossover_points"] is not None:
+                lineage_stats["crossover"][bucket] += 1
+            if record["changes"]:
+                lineage_stats["mutation"][bucket] += 1
+
         yield {
             "type": "generation",
             "gen": generation,
+            "lineage": [records[index] for index in traced_indices],
+            "lineage_stats": lineage_stats,
             "fitness_error": fitness_errors[0] if fitness_errors else None,
             "best_fitness": float(best.fitness.values[0]),
             "mean_fitness": float(sum(fits) / len(fits)),
