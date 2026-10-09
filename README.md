@@ -247,9 +247,10 @@ package, and `verify:engine` replays them through the browser engine — so a ch
   - `scripts/capture-media.mjs` — captures the screenshots below (`npm run capture:media`)
 - `docs/assets/` — the screenshots and animation used above
 
-## License note
+## License
 
-This project vendors a modified copy of GRAPE's `grape.py` (BSD-3-Clause, copyright BDS Research
-Group at University of Limerick) for per-step trace instrumentation, plus a subset of DEAP
-(LGPL-3.0) for the in-browser evolution. See
-[`frontend/src/engine/THIRD_PARTY_NOTICES.md`](frontend/src/engine/THIRD_PARTY_NOTICES.md).
+MIT — see [`LICENSE`](LICENSE). The vendored engine code keeps its original licenses: GRAPE
+(BSD-3-Clause, copyright BDS Research Group at University of Limerick), instrumented here for
+per-step tracing, and a subset of DEAP (LGPL-3.0) used for the in-browser evolution. See
+[`frontend/src/engine/THIRD_PARTY_NOTICES.md`](frontend/src/engine/THIRD_PARTY_NOTICES.md) for the
+list of modifications, and [`LICENSES/`](LICENSES) for the full texts.
